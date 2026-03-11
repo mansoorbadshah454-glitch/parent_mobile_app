@@ -30,9 +30,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       backgroundColor: ThemeColors.backgroundColor,
       body: Column(
         children: [
-          // 1. Top Navigation & Header Area
+          // 1. Top Navigation & Header Area (Flush to top)
           Container(
-            padding: EdgeInsets.only(top: topPadding),
             decoration: const BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -45,15 +44,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             child: Column(
               children: [
-                // 1. School Header (Now at the top)
+                // 1. School Header (Flush to top, integrated with Status Bar)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: EdgeInsets.only(
+                    top: topPadding, // Status bar integration
+                    left: 20,
+                    right: 20,
+                    bottom: 12,
+                  ),
                   decoration: const BoxDecoration(
                     color: ThemeColors.primaryPurple,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
+                    // Straight corners as requested
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
