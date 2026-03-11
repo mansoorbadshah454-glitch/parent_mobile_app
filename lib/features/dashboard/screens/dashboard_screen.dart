@@ -106,7 +106,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         onTap: () => setState(() => _currentIndex = 0),
                       ),
                       AnimatedMenuButton(
-                        icon: Icons.child_care_rounded,
+                        icon: Icons.people_rounded,
                         label: 'Kids',
                         isActive: _currentIndex == 1,
                         onTap: () => setState(() => _currentIndex = 1),
