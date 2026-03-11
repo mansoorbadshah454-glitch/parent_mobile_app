@@ -6,9 +6,9 @@ class PlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
+    return Container(
+      color: Colors.transparent,
+      child: Center(
         child: Text(
           '$title Content coming soon...',
           style: const TextStyle(fontSize: 18, color: Colors.grey),

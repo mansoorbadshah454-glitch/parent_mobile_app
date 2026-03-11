@@ -14,6 +14,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int _currentIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final List<Widget> _screens = [
     const PlaceholderScreen(title: 'News Feed'),
@@ -27,7 +28,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: ThemeColors.backgroundColor,
+      drawer: Drawer(
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                color: ThemeColors.primaryPurple,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircleAvatar(
+                      radius: 35,
+                      backgroundColor: Colors.white24,
+                      child: Icon(Icons.school, size: 40, color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'School V5',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                ref.read(authControllerProvider.notifier).logout();
+              },
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           // 1. Top Navigation & Header Area (Flush to top)
@@ -65,30 +107,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Colors.white24,
-                            child: Icon(Icons.school, size: 20, color: Colors.white),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'School V5',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                      GestureDetector(
+                        onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white24,
+                              child: Icon(Icons.school, size: 20, color: Colors.white),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            const Text(
+                              'School V5',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                        onPressed: () {
-                          ref.read(authControllerProvider.notifier).logout();
-                        },
-                      ),
+                      const SizedBox(width: 48), // Spacer to maintain layout balance
                     ],
                   ),
                 ),
@@ -142,4 +182,5 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 }
+
 
