@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
+import '../../features/dashboard/screens/placeholder_screen.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -11,7 +12,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      // If authState is loading, don't redirect yet
       if (authState.isLoading) return null;
 
       final isAuth = authState.value != null;
@@ -30,6 +30,24 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) => const DashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'news',
+            builder: (context, state) => const PlaceholderScreen(title: 'News Feed'),
+          ),
+          GoRoute(
+            path: 'kids',
+            builder: (context, state) => const PlaceholderScreen(title: 'My Kids'),
+          ),
+          GoRoute(
+            path: 'messages',
+            builder: (context, state) => const PlaceholderScreen(title: 'Messages'),
+          ),
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => const PlaceholderScreen(title: 'Notifications'),
+          ),
+        ]
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
