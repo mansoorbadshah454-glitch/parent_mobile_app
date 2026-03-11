@@ -98,7 +98,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     color: ThemeColors.primaryPurple,
                     boxShadow: [
                       BoxShadow(
-                        color: ThemeColors.darkerPurple,
+                        color: ThemeColors.deepPurple,
                         offset: Offset(0, 4),
                         blurRadius: 0, // Sharp shadow for 2D look
                       ),
