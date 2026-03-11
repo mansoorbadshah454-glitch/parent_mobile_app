@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_colors.dart';
 
 class AnimatedMenuButton extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final List<Color> gradientColors;
+  final bool isActive;
 
   const AnimatedMenuButton({
     super.key,
     required this.icon,
     required this.label,
     required this.onTap,
-    this.gradientColors = const [Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121)], // Default Instagram-ish
+    this.isActive = false,
   });
 
   @override
@@ -27,9 +28,9 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> with SingleTick
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -40,25 +41,18 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> with SingleTick
     super.dispose();
   }
 
-  void _onTapDown(TapDownDetails details) {
-    _controller.forward();
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    _controller.reverse();
-    widget.onTap();
-  }
-
-  void _onTapCancel() {
-    _controller.reverse();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final activeColor = ThemeColors.primaryPurple;
+    final inactiveColor = ThemeColors.secondaryText;
+
     return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) {
@@ -67,42 +61,41 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> with SingleTick
             child: child,
           );
         },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: widget.gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.gradientColors.last.withOpacity(0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Icon(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            color: widget.isActive ? activeColor.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
                 widget.icon,
-                color: Colors.white,
-                size: 28,
+                color: widget.isActive ? activeColor : inactiveColor,
+                size: 26,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF2E3B55),
+              const SizedBox(height: 4),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: widget.isActive ? FontWeight.bold : FontWeight.w500,
+                  color: widget.isActive ? activeColor : inactiveColor,
+                ),
               ),
-            ),
-          ],
+              if (widget.isActive)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  height: 3,
+                  width: 20,
+                  decoration: BoxDecoration(
+                    color: activeColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

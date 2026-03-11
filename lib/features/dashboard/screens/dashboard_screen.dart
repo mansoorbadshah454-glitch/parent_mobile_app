@@ -5,146 +5,129 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../widgets/animated_menu_button.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Get screen size for responsive design
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const PlaceholderScreen(title: 'News Feed'),
+    const PlaceholderScreen(title: 'My Kids'),
+    const PlaceholderScreen(title: 'Messages'),
+    const PlaceholderScreen(title: 'Notifications'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: ThemeColors.backgroundColor,
       body: Column(
         children: [
-          // 1. Normal Size Gradient Header
+          // 1. Top Navigation & Header Area
           Container(
-            padding: EdgeInsets.only(
-              top: topPadding + 10,
-              bottom: 15,
-              left: 20,
-              right: 20,
-            ),
+            padding: EdgeInsets.only(top: topPadding),
             decoration: const BoxDecoration(
-              gradient: ThemeColors.instagramGradient,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 10,
-                  offset: Offset(0, 5),
+                  offset: Offset(0, 2),
                 )
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
+            child: Column(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.white24,
-                        shape: BoxShape.circle,
+                // Top Menu Bar (Facebook Style)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      AnimatedMenuButton(
+                        icon: Icons.article_rounded,
+                        label: 'News',
+                        isActive: _currentIndex == 0,
+                        onTap: () => setState(() => _currentIndex = 0),
                       ),
-                      child: const Icon(
-                        Icons.school, // Placeholder for School Logo
-                        size: 30,
-                        color: Colors.white,
+                      AnimatedMenuButton(
+                        icon: Icons.child_care_rounded,
+                        label: 'Kids',
+                        isActive: _currentIndex == 1,
+                        onTap: () => setState(() => _currentIndex = 1),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'School V5',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          'Parent Portal',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      AnimatedMenuButton(
+                        icon: Icons.message_rounded,
+                        label: 'Chat',
+                        isActive: _currentIndex == 2,
+                        onTap: () => setState(() => _currentIndex = 2),
+                      ),
+                      AnimatedMenuButton(
+                        icon: Icons.notifications_active_rounded,
+                        label: 'Alerts',
+                        isActive: _currentIndex == 3,
+                        onTap: () => setState(() => _currentIndex = 3),
+                      ),
+                    ],
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                  onPressed: () {
-                    ref.read(authControllerProvider.notifier).logout();
-                  },
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 20),
 
-          // 2. Wide Full-Screen Menu Bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                AnimatedMenuButton(
-                  icon: Icons.article_rounded,
-                  label: 'News',
-                  onTap: () => context.go('/news'),
-                ),
-                AnimatedMenuButton(
-                  icon: Icons.child_care_rounded,
-                  label: 'Kids',
-                  onTap: () => context.go('/kids'),
-                ),
-                AnimatedMenuButton(
-                  icon: Icons.message_rounded,
-                  label: 'Messages',
-                  onTap: () => context.go('/messages'),
-                ),
-                AnimatedMenuButton(
-                  icon: Icons.notifications_active_rounded,
-                  label: 'Alerts',
-                  onTap: () => context.go('/notifications'),
+                // School Header (Integrated below menu)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: const BoxDecoration(
+                    color: ThemeColors.primaryPurple,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.white24,
+                            child: Icon(Icons.school, size: 20, color: Colors.white),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'School V5',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                        onPressed: () {
+                          ref.read(authControllerProvider.notifier).logout();
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // 3. Main Scrollable Content area (Empty for now)
-          const Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(height: 20),
-                )
-              ],
+          // 2. Main Content switching area
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: _screens,
             ),
           ),
         ],
@@ -152,3 +135,4 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 }
+

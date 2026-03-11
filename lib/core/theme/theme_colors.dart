@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
 
 class ThemeColors {
-  // Instagram style gradient colors
-  static const Color instaPurple = Color(0xFF833AB4);
-  static const Color instaRed = Color(0xFFFD1D1D);
-  static const Color instaOrange = Color(0xFFF56040);
-  static const Color instaYellow = Color(0xFFFCAF45);
+  // Purple theme colors
+  static const Color primaryPurple = Color(0xFF673AB7);
+  static const Color deepPurple = Color(0xFF512DA8);
+  static const Color lightPurple = Color(0xFFD1C4E9);
   
-  static const LinearGradient instagramGradient = LinearGradient(
+  static const LinearGradient purpleGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      instaPurple,
-      instaRed,
-      instaOrange,
-      instaYellow,
+      deepPurple,
+      primaryPurple,
     ],
   );
 
   static const Color primaryText = Color(0xFF2E3B55);
   static const Color secondaryText = Color(0xFF757575);
   static const Color surfaceColor = Colors.white;
-  static const Color backgroundColor = Color(0xFFF7F9FC); // Very light grey blue
+  static const Color backgroundColor = Color(0xFFF3F2F7);
 }
