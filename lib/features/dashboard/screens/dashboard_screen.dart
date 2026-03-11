@@ -45,41 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             child: Column(
               children: [
-                // Top Menu Bar (Facebook Style)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      AnimatedMenuButton(
-                        icon: Icons.article_rounded,
-                        label: 'News',
-                        isActive: _currentIndex == 0,
-                        onTap: () => setState(() => _currentIndex = 0),
-                      ),
-                      AnimatedMenuButton(
-                        icon: Icons.child_care_rounded,
-                        label: 'Kids',
-                        isActive: _currentIndex == 1,
-                        onTap: () => setState(() => _currentIndex = 1),
-                      ),
-                      AnimatedMenuButton(
-                        icon: Icons.message_rounded,
-                        label: 'Chat',
-                        isActive: _currentIndex == 2,
-                        onTap: () => setState(() => _currentIndex = 2),
-                      ),
-                      AnimatedMenuButton(
-                        icon: Icons.notifications_active_rounded,
-                        label: 'Alerts',
-                        isActive: _currentIndex == 3,
-                        onTap: () => setState(() => _currentIndex = 3),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // School Header (Integrated below menu)
+                // 1. School Header (Now at the top)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: const BoxDecoration(
@@ -115,6 +81,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         onPressed: () {
                           ref.read(authControllerProvider.notifier).logout();
                         },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 2. Top Menu Bar (Facebook Style, now below header)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      AnimatedMenuButton(
+                        icon: Icons.article_rounded,
+                        label: 'News',
+                        isActive: _currentIndex == 0,
+                        onTap: () => setState(() => _currentIndex = 0),
+                      ),
+                      AnimatedMenuButton(
+                        icon: Icons.child_care_rounded,
+                        label: 'Kids',
+                        isActive: _currentIndex == 1,
+                        onTap: () => setState(() => _currentIndex = 1),
+                      ),
+                      AnimatedMenuButton(
+                        icon: Icons.message_rounded,
+                        label: 'Chat',
+                        isActive: _currentIndex == 2,
+                        onTap: () => setState(() => _currentIndex = 2),
+                      ),
+                      AnimatedMenuButton(
+                        icon: Icons.notifications_active_rounded,
+                        label: 'Alerts',
+                        isActive: _currentIndex == 3,
+                        onTap: () => setState(() => _currentIndex = 3),
                       ),
                     ],
                   ),
