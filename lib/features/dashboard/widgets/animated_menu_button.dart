@@ -64,7 +64,7 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> with SingleTick
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           decoration: BoxDecoration(
-            color: widget.isActive ? activeColor.withOpacity(0.1) : Colors.transparent,
+            color: widget.isActive ? activeColor.withValues(alpha: 0.1) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
