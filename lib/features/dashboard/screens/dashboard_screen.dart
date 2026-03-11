@@ -11,146 +11,141 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Get screen size for responsive design
-    final size = MediaQuery.of(context).size;
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: ThemeColors.backgroundColor,
-      body: Stack(
+      body: Column(
         children: [
-          // 1. Gradient Header Background
+          // 1. Normal Size Gradient Header
           Container(
-            height: size.height * 0.35,
-            width: double.infinity,
+            padding: EdgeInsets.only(
+              top: topPadding + 10,
+              bottom: 15,
+              left: 20,
+              right: 20,
+            ),
             decoration: const BoxDecoration(
               gradient: ThemeColors.instagramGradient,
               borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.school, // Placeholder for School Logo
+                        size: 30,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'School V5',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          'Parent Portal',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.white),
+                  onPressed: () {
+                    ref.read(authControllerProvider.notifier).logout();
+                  },
+                ),
+              ],
             ),
           ),
           
-          // 2. Main Scrollable Content
-          CustomScrollView(
-            slivers: [
-              // Header Content
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    top: topPadding + 20,
-                    left: 20,
-                    right: 20,
-                    bottom: 20,
-                  ),
-                  child: Column(
-                    children: [
-                      // Top Row (Profile & Logout)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const CircleAvatar(
-                            radius: 25,
-                            backgroundColor: Colors.white24,
-                            child: Icon(Icons.person, color: Colors.white, size: 30),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.logout, color: Colors.white),
-                            onPressed: () {
-                              ref.read(authControllerProvider.notifier).logout();
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
-                      
-                      // School Info
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.school, // Placeholder for School Logo
-                          size: 50,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'School V5',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const Text(
-                        'Parent Portal',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          const SizedBox(height: 20),
 
-              // 3. The Menu Card
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        AnimatedMenuButton(
-                          icon: Icons.article_rounded,
-                          label: 'News',
-                          onTap: () => context.go('/news'),
-                        ),
-                        AnimatedMenuButton(
-                          icon: Icons.child_care_rounded,
-                          label: 'Kids',
-                          onTap: () => context.go('/kids'),
-                        ),
-                        AnimatedMenuButton(
-                          icon: Icons.message_rounded,
-                          label: 'Messages',
-                          onTap: () => context.go('/messages'),
-                        ),
-                        AnimatedMenuButton(
-                          icon: Icons.notifications_active_rounded,
-                          label: 'Alerts',
-                          onTap: () => context.go('/notifications'),
-                        ),
-                      ],
-                    ),
-                  ),
+          // 2. Wide Full-Screen Menu Bar
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
                 ),
-              ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                AnimatedMenuButton(
+                  icon: Icons.article_rounded,
+                  label: 'News',
+                  onTap: () => context.go('/news'),
+                ),
+                AnimatedMenuButton(
+                  icon: Icons.child_care_rounded,
+                  label: 'Kids',
+                  onTap: () => context.go('/kids'),
+                ),
+                AnimatedMenuButton(
+                  icon: Icons.message_rounded,
+                  label: 'Messages',
+                  onTap: () => context.go('/messages'),
+                ),
+                AnimatedMenuButton(
+                  icon: Icons.notifications_active_rounded,
+                  label: 'Alerts',
+                  onTap: () => context.go('/notifications'),
+                ),
+              ],
+            ),
+          ),
 
-              // Placeholder for future content (e.g. Recent Activities)
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 40),
-              )
-            ],
+          // 3. Main Scrollable Content area (Empty for now)
+          const Expanded(
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 20),
+                )
+              ],
+            ),
           ),
         ],
       ),
