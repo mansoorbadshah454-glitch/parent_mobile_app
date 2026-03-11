@@ -54,7 +54,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   decoration: const BoxDecoration(
                     color: ThemeColors.primaryPurple,
-                    // Straight corners as requested
+                    boxShadow: [
+                      BoxShadow(
+                        color: ThemeColors.darkerPurple,
+                        offset: Offset(0, 4),
+                        blurRadius: 0, // Sharp shadow for 2D look
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

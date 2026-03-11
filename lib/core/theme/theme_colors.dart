@@ -4,6 +4,7 @@ class ThemeColors {
   // Purple theme colors
   static const Color primaryPurple = Color(0xFF673AB7);
   static const Color deepPurple = Color(0xFF512DA8);
+  static const Color darkerPurple = Color(0xFF311B92);
   static const Color lightPurple = Color(0xFFD1C4E9);
   
   static const LinearGradient purpleGradient = LinearGradient(
