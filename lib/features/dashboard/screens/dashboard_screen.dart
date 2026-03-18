@@ -9,6 +9,7 @@ import '../../chat/screens/chat_screen.dart';
 import '../../alerts/screens/alerts_screen.dart';
 import '../widgets/animated_menu_button.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'placeholder_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -75,9 +76,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
         final topPadding = MediaQuery.of(context).padding.top;
 
-        return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: ThemeColors.backgroundColor,
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light,
+          child: Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: ThemeColors.backgroundColor,
       drawer: Drawer(
         child: Column(
           children: [
@@ -285,6 +288,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
+    ),
     );
       },
     );
