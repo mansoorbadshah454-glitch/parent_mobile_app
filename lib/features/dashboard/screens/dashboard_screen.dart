@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/providers/parent_data_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../kids/screens/kids_screen.dart';
+import '../../news/screens/news_screen.dart';
+import '../../chat/screens/chat_screen.dart';
+import '../../alerts/screens/alerts_screen.dart';
 import '../widgets/animated_menu_button.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'placeholder_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -14,20 +20,62 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int _currentIndex = 0;
+  bool _showMenuBar = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final PageController _pageController = PageController();
 
   final List<Widget> _screens = [
-    const PlaceholderScreen(title: 'News Feed'),
-    const PlaceholderScreen(title: 'My Kids'),
-    const PlaceholderScreen(title: 'Messages'),
-    const PlaceholderScreen(title: 'Notifications'),
+    const NewsScreen(),
+    const KidsScreen(),
+    const ChatScreen(),
+    const AlertsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
+    final parentDataAsync = ref.watch(parentDataProvider);
+    
+    return parentDataAsync.when(
+      loading: () => const Scaffold(
+        backgroundColor: ThemeColors.backgroundColor,
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error loading parent data: $error'),
+              ElevatedButton(
+                onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+                child: const Text('Logout'),
+              )
+            ],
+          ),
+        ),
+      ),
+      data: (parentData) {
+        if (parentData == null) {
+          // Edge case: user is logged in via FB Auth but has no valid parent doc.
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('No valid parent account found.'),
+                  TextButton(
+                    onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+                    child: const Text('Logout'),
+                  )
+                ],
+              ),
+            ),
+          );
+        }
 
-    return Scaffold(
+        final topPadding = MediaQuery.of(context).padding.top;
+
+        return Scaffold(
       key: _scaffoldKey,
       backgroundColor: ThemeColors.backgroundColor,
       drawer: Drawer(
@@ -47,13 +95,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: Icon(Icons.school, size: 40, color: Colors.white),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'School V5',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Column(
+                      children: [
+                        Text(
+                          parentData.schoolName ?? 'School App',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "Track your kid's education",
+                          style: GoogleFonts.montserrat(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -117,13 +177,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: Icon(Icons.school, size: 20, color: Colors.white),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              'School V5',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  parentData.schoolName ?? 'School App',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "Track your kid's education",
+                                  style: GoogleFonts.montserrat(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -134,36 +207,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
 
                 // 2. Top Menu Bar (Facebook Style, now below header)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      AnimatedMenuButton(
-                        icon: Icons.article_rounded,
-                        label: 'News',
-                        isActive: _currentIndex == 0,
-                        onTap: () => setState(() => _currentIndex = 0),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: _showMenuBar ? 80.0 : 0.0,
+                  curve: Curves.easeInOut,
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          AnimatedMenuButton(
+                            icon: Icons.article_rounded,
+                            label: 'News',
+                            isActive: _currentIndex == 0,
+                            onTap: () => _pageController.animateToPage(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                          ),
+                          AnimatedMenuButton(
+                            icon: Icons.people_rounded,
+                            label: 'Kids',
+                            isActive: _currentIndex == 1,
+                            onTap: () => _pageController.animateToPage(1, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                          ),
+                          AnimatedMenuButton(
+                            icon: Icons.message_rounded,
+                            label: 'Chat',
+                            isActive: _currentIndex == 2,
+                            onTap: () => _pageController.animateToPage(2, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                          ),
+                          AnimatedMenuButton(
+                            icon: Icons.notifications_active_rounded,
+                            label: 'Alerts',
+                            isActive: _currentIndex == 3,
+                            onTap: () => _pageController.animateToPage(3, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                          ),
+                        ],
                       ),
-                      AnimatedMenuButton(
-                        icon: Icons.people_rounded,
-                        label: 'Kids',
-                        isActive: _currentIndex == 1,
-                        onTap: () => setState(() => _currentIndex = 1),
-                      ),
-                      AnimatedMenuButton(
-                        icon: Icons.message_rounded,
-                        label: 'Chat',
-                        isActive: _currentIndex == 2,
-                        onTap: () => setState(() => _currentIndex = 2),
-                      ),
-                      AnimatedMenuButton(
-                        icon: Icons.notifications_active_rounded,
-                        label: 'Alerts',
-                        isActive: _currentIndex == 3,
-                        onTap: () => setState(() => _currentIndex = 3),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -172,13 +253,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           // 2. Main Content switching area
           Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: _screens,
+            child: NotificationListener<ScrollUpdateNotification>(
+              onNotification: (ScrollUpdateNotification notification) {
+                if (notification.metrics.axis == Axis.vertical) {
+                  if (notification.scrollDelta != null) {
+                    if (notification.scrollDelta! > 2.0 && _showMenuBar) {
+                      setState(() {
+                        _showMenuBar = false;
+                      });
+                    } else if (notification.scrollDelta! < -2.0 && !_showMenuBar) {
+                      setState(() {
+                        _showMenuBar = true;
+                      });
+                    }
+                  }
+                }
+                return false;
+              },
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                    _showMenuBar = true; // reset to show menu horizontally
+                  });
+                },
+                physics: const BouncingScrollPhysics(),
+                children: _screens,
+              ),
             ),
           ),
         ],
       ),
+    );
+      },
     );
   }
 }
