@@ -30,7 +30,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     const KidsScreen(),
     const ChatScreen(),
     const AlertsScreen(),
+    const PlaceholderScreen(title: 'Fees'),
   ];
+
+  void _onMenuTap(int targetIndex) {
+    if (_currentIndex == targetIndex) return;
+    if ((_currentIndex - targetIndex).abs() > 1) {
+      _pageController.jumpToPage(targetIndex > _currentIndex ? targetIndex - 1 : targetIndex + 1);
+    }
+    _pageController.animateToPage(
+      targetIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,25 +238,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             icon: Icons.article_rounded,
                             label: 'News',
                             isActive: _currentIndex == 0,
-                            onTap: () => _pageController.animateToPage(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                            onTap: () => _onMenuTap(0),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.people_rounded,
                             label: 'Kids',
                             isActive: _currentIndex == 1,
-                            onTap: () => _pageController.animateToPage(1, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                            onTap: () => _onMenuTap(1),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.message_rounded,
                             label: 'Chat',
                             isActive: _currentIndex == 2,
-                            onTap: () => _pageController.animateToPage(2, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                            onTap: () => _onMenuTap(2),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.notifications_active_rounded,
                             label: 'Alerts',
                             isActive: _currentIndex == 3,
-                            onTap: () => _pageController.animateToPage(3, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                            onTap: () => _onMenuTap(3),
+                          ),
+                          AnimatedMenuButton(
+                            icon: Icons.receipt_long_rounded,
+                            label: 'Fees',
+                            isActive: _currentIndex == 4,
+                            onTap: () => _onMenuTap(4),
                           ),
                         ],
                       ),
