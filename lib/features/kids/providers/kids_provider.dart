@@ -7,12 +7,14 @@ class KidData {
   final String name;
   final String imageUrl;
   final String className;
+  final String rollNo;
 
   KidData({
     required this.id,
     required this.name,
     required this.imageUrl,
     required this.className,
+    required this.rollNo,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id) {
@@ -21,6 +23,7 @@ class KidData {
       name: map['name'] ?? '${map['firstName'] ?? ''} ${map['lastName'] ?? ''}'.trim(),
       imageUrl: map['profilePic'] ?? map['avatar'] ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=$id',
       className: map['className'] ?? map['class'] ?? 'N/A',
+      rollNo: map['rollNo']?.toString() ?? map['rollNumber']?.toString() ?? 'N/A',
     );
   }
 }

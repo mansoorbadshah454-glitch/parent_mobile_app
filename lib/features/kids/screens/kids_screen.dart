@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/kids_provider.dart';
+import '../widgets/shining_profile_avatar.dart';
+import 'kid_details_screen.dart';
 
 class KidsScreen extends ConsumerWidget {
   const KidsScreen({super.key});
@@ -15,48 +17,63 @@ class KidsScreen extends ConsumerWidget {
           if (kids.isEmpty) {
             return const Center(child: Text('No kids linked to this account.'));
           }
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.8,
-            ),
+          return ListView.builder(
+            padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
             itemCount: kids.length,
             itemBuilder: (context, index) {
               final kid = kids[index];
               return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: NetworkImage(kid.imageUrl),
-                      backgroundColor: Colors.grey[200],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      kid.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                color: Colors.white,
+                elevation: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => KidDetailsScreen(kid: kid),
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                    child: Row(
+                      children: [
+                        ShiningProfileAvatar(
+                          imageUrl: kid.imageUrl,
+                          radius: 28, // Scaled for standard vertical list
+                          strokeWidth: 2.5,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                kid.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Class: ${kid.className}  |  Roll: ${kid.rollNo}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Class: ${kid.className}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },

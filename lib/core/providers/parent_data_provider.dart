@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class ParentData {
   final String uid;
@@ -53,13 +54,13 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
             schoolName = schoolDoc.data()?['name'];
           }
         } catch (e) {
-          print('Error fetching school profile: $e');
+          debugPrint('Error fetching school profile: $e');
         }
       }
       return ParentData.fromMap(doc.data()!, user.uid, user.email ?? '', schoolName: schoolName);
     }
   } catch (e) {
-    print('Error fetching parent data: $e');
+    debugPrint('Error fetching parent data: $e');
   }
   return null;
 });

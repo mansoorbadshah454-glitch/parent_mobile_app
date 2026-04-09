@@ -7,7 +7,7 @@ import '../../../core/providers/parent_data_provider.dart';
 import '../widgets/post_comments_modal.dart';
 import '../../../core/widgets/video_player_widget.dart';
 import '../widgets/full_screen_media_viewer.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 
 class NewsScreen extends ConsumerWidget {
@@ -46,7 +46,7 @@ class NewsScreen extends ConsumerWidget {
                       child: Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: Colors.blueAccent.withOpacity(0.1),
+                            backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
                             backgroundImage: post.authorImage.isNotEmpty ? NetworkImage(post.authorImage) : null,
                             child: post.authorImage.isEmpty ? const Icon(Icons.school, color: Colors.blueAccent) : null,
                           ),

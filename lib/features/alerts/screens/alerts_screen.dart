@@ -24,7 +24,7 @@ class AlertsScreen extends ConsumerWidget {
               final alert = alerts[index];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: alert.read ? Colors.grey[200] : Colors.redAccent.withOpacity(0.1),
+                  backgroundColor: alert.read ? Colors.grey[200] : Colors.redAccent.withValues(alpha: 0.1),
                   child: Icon(
                     alert.type == 'attendance' ? Icons.check_circle_outline : Icons.notifications,
                     color: alert.read ? Colors.grey : Colors.redAccent,
