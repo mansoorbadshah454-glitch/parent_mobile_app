@@ -7,6 +7,7 @@ class KidData {
   final String name;
   final String imageUrl;
   final String className;
+  final String classId;
   final String rollNo;
 
   KidData({
@@ -14,15 +15,17 @@ class KidData {
     required this.name,
     required this.imageUrl,
     required this.className,
+    required this.classId,
     required this.rollNo,
   });
 
-  factory KidData.fromMap(Map<String, dynamic> map, String id) {
+  factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
     return KidData(
       id: id,
       name: map['name'] ?? '${map['firstName'] ?? ''} ${map['lastName'] ?? ''}'.trim(),
-      imageUrl: map['profilePic'] ?? map['avatar'] ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=$id',
-      className: map['className'] ?? map['class'] ?? 'N/A',
+      imageUrl: map['profilePic'] ?? map['avatar'] ?? 'https://api.dicebear.com/7.x/avataaars/png?seed=$id',
+      className: overrideClassName ?? map['className'] ?? map['class'] ?? 'N/A',
+      classId: overrideClassId ?? map['classId']?.toString() ?? '',
       rollNo: map['rollNo']?.toString() ?? map['rollNumber']?.toString() ?? 'N/A',
     );
   }
@@ -36,51 +39,59 @@ final kidsProvider = StreamProvider<List<KidData>>((ref) async* {
   }
 
   final parentData = parentDataAsync.value!;
-  final schoolId = parentData.schoolId;
   final parentId = parentData.uid;
 
-  if (schoolId.isEmpty || parentId.isEmpty) {
+  if (parentId.isEmpty) {
     yield [];
     return;
   }
 
-  final parentDocStream = FirebaseFirestore.instance
-      .collection('schools')
-      .doc(schoolId)
-      .collection('parents')
-      .doc(parentId)
+  // Fetch class names map to resolve accurate names natively
+  Map<String, String> classesMap = {};
+  if (parentData.schoolId.isNotEmpty) {
+    try {
+      final classesSnap = await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(parentData.schoolId)
+          .collection('classes')
+          .get();
+      for (final doc in classesSnap.docs) {
+        classesMap[doc.id] = doc.data()['name']?.toString() ?? 'Class';
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  // Use Collection Group query to find all student records directly from class subcollections
+  final studentsStream = FirebaseFirestore.instance
+      .collectionGroup('students')
+      .where('parentDetails.parentId', isEqualTo: parentId)
       .snapshots();
 
-  await for (final parentSnap in parentDocStream) {
-    if (!parentSnap.exists) {
-      yield [];
-      continue;
-    }
-
-    final data = parentSnap.data()!;
-    final linkedStudents = data['linkedStudents'] ?? data['children'] ?? [];
-    
-    if (linkedStudents.isEmpty) {
-      yield [];
-      continue;
-    }
-
+  await for (final snap in studentsStream) {
     List<KidData> kidsList = [];
-    for (final link in linkedStudents) {
-      final studentId = link is String ? link : link['studentId'];
-      if (studentId == null) continue;
-
-      final studentDoc = await FirebaseFirestore.instance
-          .collection('schools')
-          .doc(schoolId)
-          .collection('students')
-          .doc(studentId)
-          .get();
-
-      if (studentDoc.exists) {
-        kidsList.add(KidData.fromMap(studentDoc.data()!, studentId));
+    
+    for (final doc in snap.docs) {
+      // Ensure we only process documents inside a class sub-collection
+      // (Ignores duplicated 'master' records at schools/{id}/students)
+      if (!doc.reference.path.contains('/classes/')) {
+        continue;
       }
+      
+      final studentData = doc.data();
+      
+      // Derive accurate classId from the document path
+      // schools/{schoolId}/classes/{classId}/students/{studentId}
+      final parentCollection = doc.reference.parent; // 'students'
+      final classDoc = parentCollection.parent; // '{classId}'
+      
+      final realClassId = classDoc?.id;
+      final realClassName = realClassId != null ? classesMap[realClassId] : null;
+      
+      kidsList.add(KidData.fromMap(studentData, doc.id, overrideClassId: realClassId, overrideClassName: realClassName));
     }
+    
     yield kidsList;
   }
 });

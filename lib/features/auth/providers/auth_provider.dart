@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -19,10 +21,30 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
 
   AuthController(this._authService) : super(const AsyncValue.data(null));
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String schoolId, String email, String password) async {
     state = const AsyncValue.loading();
     try {
-      await _authService.signInWithEmailPassword(email: email, password: password);
+      final credential = await _authService.signInWithEmailPassword(email: email, password: password);
+      
+      if (credential.user != null) {
+        // Verify user exists in the specified school
+        final parentDoc = await FirebaseFirestore.instance
+            .collection('schools')
+            .doc(schoolId)
+            .collection('parents')
+            .doc(credential.user!.uid)
+            .get();
+            
+        if (!parentDoc.exists) {
+           await _authService.signOut();
+           throw Exception('Invalid School ID or parent not found in this school.');
+        }
+        
+        // Save schoolId to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_school_id', schoolId);
+      }
+
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

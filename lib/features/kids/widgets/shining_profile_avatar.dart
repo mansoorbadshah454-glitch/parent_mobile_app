@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ShiningProfileAvatar extends StatefulWidget {
   final String imageUrl;
@@ -66,7 +67,7 @@ class _ShiningProfileAvatarState extends State<ShiningProfileAvatar>
               children: [
                 CircleAvatar(
                   radius: widget.radius,
-                  backgroundImage: NetworkImage(widget.imageUrl),
+                  backgroundImage: CachedNetworkImageProvider(widget.imageUrl),
                   backgroundColor: Colors.grey[200],
                 ),
                 // Animated white shimmer layer over the image

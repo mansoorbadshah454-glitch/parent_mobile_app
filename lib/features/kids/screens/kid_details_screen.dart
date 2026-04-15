@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/kids_provider.dart';
 import '../widgets/shining_profile_avatar.dart';
+import '../widgets/academic_tab_content.dart';
+import '../widgets/personality_tab_content.dart';
+import '../widgets/attendance_tab_content.dart';
+import '../widgets/chat_tab_content.dart';
 import '../../../core/providers/parent_data_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 
@@ -133,13 +137,13 @@ class KidDetailsScreen extends ConsumerWidget {
             ),
             
             // Empty Tabs Below
-            const Expanded(
+            Expanded(
               child: TabBarView(
                 children: [
-                  Center(child: Text('Academic Data (Coming Soon)')),
-                  Center(child: Text('Personality Data (Coming Soon)')),
-                  Center(child: Text('Attendance Data (Coming Soon)')),
-                  Center(child: Text('Chat (Coming Soon)')),
+                  AcademicTabContent(kid: kid),
+                  PersonalityTabContent(kid: kid),
+                  AttendanceTabContent(kid: kid),
+                  ChatTabContent(kid: kid),
                 ],
               ),
             ),

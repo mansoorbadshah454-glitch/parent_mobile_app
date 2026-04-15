@@ -40,7 +40,13 @@ class AuthService {
         return 'The email address is badly formatted.';
       case 'user-disabled':
         return 'This user account has been disabled.';
+      case 'network-request-failed':
+        return 'NO_INTERNET_CONNECTION'; // Clean key string to catch in UI
       default:
+        // Firebase auth can throw many errors, some generic ones might be related to network if e.message contains it.
+        if (e.message != null && e.message!.toLowerCase().contains('network')) {
+           return 'NO_INTERNET_CONNECTION';
+        }
         return e.message ?? 'An unknown authentication error occurred.';
     }
   }

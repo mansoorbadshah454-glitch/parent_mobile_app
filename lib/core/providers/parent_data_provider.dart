@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 
@@ -34,13 +35,30 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
   if (user == null) return null;
 
   try {
+    final prefs = await SharedPreferences.getInstance();
+    String? schoolId = prefs.getString('current_school_id');
+
+    // Fallback logic for backward compatibility if needed, but ideally it should use schoolId
+    if (schoolId == null || schoolId.isEmpty) {
+      final doc = await FirebaseFirestore.instance
+          .collection('global_users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists && doc.data()?['role'] == 'parent') {
+        schoolId = doc.data()?['schoolId'] ?? '';
+      }
+    }
+
+    if (schoolId == null || schoolId.isEmpty) return null;
+
     final doc = await FirebaseFirestore.instance
-        .collection('global_users')
+        .collection('schools')
+        .doc(schoolId)
+        .collection('parents')
         .doc(user.uid)
         .get();
 
-    if (doc.exists && doc.data()?['role'] == 'parent') {
-      final schoolId = doc.data()!['schoolId'] ?? '';
+    if (doc.exists) {
       String? schoolName;
       if (schoolId.isNotEmpty) {
         try {
@@ -57,7 +75,10 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
           debugPrint('Error fetching school profile: $e');
         }
       }
-      return ParentData.fromMap(doc.data()!, user.uid, user.email ?? '', schoolName: schoolName);
+      // Adding schoolId to the map manually since it might not be in the parent doc itself
+      final mapData = doc.data() ?? {};
+      mapData['schoolId'] = schoolId;
+      return ParentData.fromMap(mapData, user.uid, user.email ?? '', schoolName: schoolName);
     }
   } catch (e) {
     debugPrint('Error fetching parent data: $e');
