@@ -13,6 +13,8 @@ import 'package:flutter/services.dart';
 import 'placeholder_screen.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../alerts/providers/alerts_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/glowing_school_background.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -104,44 +106,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       drawer: Drawer(
         child: Column(
           children: [
-            DrawerHeader(
+            Container(
+              height: 220 + MediaQuery.of(context).padding.top,
               decoration: const BoxDecoration(
                 color: ThemeColors.primaryPurple,
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.white24,
-                      child: Icon(Icons.school, size: 40, color: Colors.white),
-                    ),
-                    const SizedBox(height: 12),
-                    Column(
+              child: GlowingSchoolBackground(
+                child: Padding(
+                  padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          parentData.schoolName ?? 'School App',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        CircleAvatar(
+                          radius: 53,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: (parentData.schoolLogo != null && parentData.schoolLogo!.trim().isNotEmpty)
+                              ? CachedNetworkImageProvider(parentData.schoolLogo!)
+                              : null,
+                          child: (parentData.schoolLogo == null || parentData.schoolLogo!.trim().isEmpty)
+                              ? const Icon(Icons.school, size: 60, color: Colors.white)
+                              : null,
                         ),
-                        Text(
-                          "Track your kid's education",
-                          style: GoogleFonts.montserrat(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(height: 12),
+                      Column(
+                        children: [
+                          Text(
+                            parentData.schoolName ?? 'School App',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          Text(
+                            "Track your kid's education",
+                            style: GoogleFonts.montserrat(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
+          ),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.redAccent),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),

@@ -10,6 +10,7 @@ class ParentData {
   final String name;
   final String email;
   final String? schoolName;
+  final String? schoolLogo;
 
   ParentData({
     required this.uid,
@@ -17,15 +18,17 @@ class ParentData {
     required this.name,
     required this.email,
     this.schoolName,
+    this.schoolLogo,
   });
 
-  factory ParentData.fromMap(Map<String, dynamic> map, String uid, String email, {String? schoolName}) {
+  factory ParentData.fromMap(Map<String, dynamic> map, String uid, String email, {String? schoolName, String? schoolLogo}) {
     return ParentData(
       uid: uid,
       schoolId: map['schoolId'] ?? '',
       name: map['name'] ?? 'Parent',
       email: email,
       schoolName: schoolName,
+      schoolLogo: schoolLogo,
     );
   }
 }
@@ -60,6 +63,7 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
 
     if (doc.exists) {
       String? schoolName;
+      String? schoolLogo;
       if (schoolId.isNotEmpty) {
         try {
           final schoolDoc = await FirebaseFirestore.instance
@@ -69,7 +73,8 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
               .doc('profile')
               .get();
           if (schoolDoc.exists) {
-            schoolName = schoolDoc.data()?['name'];
+            schoolName = schoolDoc.data()?['name'] ?? schoolDoc.data()?['schoolName'];
+            schoolLogo = schoolDoc.data()?['profileImage'] ?? schoolDoc.data()?['logo'];
           }
         } catch (e) {
           debugPrint('Error fetching school profile: $e');
@@ -78,7 +83,7 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
       // Adding schoolId to the map manually since it might not be in the parent doc itself
       final mapData = doc.data() ?? {};
       mapData['schoolId'] = schoolId;
-      return ParentData.fromMap(mapData, user.uid, user.email ?? '', schoolName: schoolName);
+      return ParentData.fromMap(mapData, user.uid, user.email ?? '', schoolName: schoolName, schoolLogo: schoolLogo);
     }
   } catch (e) {
     debugPrint('Error fetching parent data: $e');

@@ -36,7 +36,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
         break;
       case 'personality':
         iconData = Icons.volunteer_activism_rounded;
-        color = Colors.teal;
+        color = Colors.teal.shade500; // Distinct thick teal for personality
         break;
       case 'academic':
       case 'performance':
@@ -103,14 +103,17 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     }
 
     if (targetKid != null) {
-      int tabIndex = 0;
+      int tabIndex = 0; // Default fallback to Academic
       final type = alert.type.toLowerCase();
-      if (type == 'attendance') {
+      
+      if (['attendance'].contains(type)) {
         tabIndex = 2; // Index 2 is Attendance
       } else if (['health', 'behavior', 'hygiene', 'personality'].contains(type)) {
         tabIndex = 1; // Index 1 is Personality
-      } else {
+      } else if (['academic', 'performance', 'celebration'].contains(type)) {
         tabIndex = 0; // Index 0 is Academic
+      } else {
+        tabIndex = 0; // Default fallback for unknown types
       }
 
       if (!alert.read) {
