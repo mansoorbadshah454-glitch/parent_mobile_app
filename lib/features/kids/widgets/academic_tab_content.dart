@@ -83,54 +83,61 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
       className: widget.kid.className,
     )));
 
-    return performanceAsync.when(
-      data: (data) {
-        if (data == null || data.academicScores.isEmpty) {
-          return _buildEmptyState();
+    return Builder(
+      builder: (context) {
+        if (performanceAsync.hasValue) {
+          final data = performanceAsync.value;
+          if (data == null || data.academicScores.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          final subjectScores = data.academicScores;
+          final homeworkScore = data.homeworkAverage;
+
+          final double averageAcademic = subjectScores.values.reduce((a, b) => a + b) / subjectScores.length;
+          final double overallScore = (averageAcademic * 0.6) + (homeworkScore * 0.4);
+          final badgeData = _getScoreData(overallScore);
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle("Academic Performance"),
+                const SizedBox(height: 16),
+                _buildAcademicBarChart(subjectScores),
+                
+                const SizedBox(height: 32),
+                _buildSectionTitle("Homework Completion"),
+                const SizedBox(height: 16),
+                _buildHomeworkChart(homeworkScore),
+                
+                const SizedBox(height: 32),
+                _buildSectionTitle("Progress Insight"),
+                const SizedBox(height: 16),
+                _buildInfoBadge(badgeData),
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
         }
-
-        final subjectScores = data.academicScores;
-        final homeworkScore = data.homeworkAverage;
-
-        final double averageAcademic = subjectScores.values.reduce((a, b) => a + b) / subjectScores.length;
-        final double overallScore = (averageAcademic * 0.6) + (homeworkScore * 0.4);
-        final badgeData = _getScoreData(overallScore);
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionTitle("Academic Performance"),
-              const SizedBox(height: 16),
-              _buildAcademicBarChart(subjectScores),
-              
-              const SizedBox(height: 32),
-              _buildSectionTitle("Homework Completion"),
-              const SizedBox(height: 16),
-              _buildHomeworkChart(homeworkScore),
-              
-              const SizedBox(height: 32),
-              _buildSectionTitle("Progress Insight"),
-              const SizedBox(height: 16),
-              _buildInfoBadge(badgeData),
-              const SizedBox(height: 24),
-            ],
+        
+        if (performanceAsync.hasError) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text("Failed to load academic data.", style: TextStyle(color: Colors.red)),
+            ),
+          );
+        }
+        
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(40.0),
+            child: CircularProgressIndicator(),
           ),
         );
       },
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40.0),
-          child: CircularProgressIndicator(),
-        ),
-      ),
-      error: (error, stack) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Text("Failed to load academic data.", style: TextStyle(color: Colors.red)),
-        ),
-      ),
     );
   }
 

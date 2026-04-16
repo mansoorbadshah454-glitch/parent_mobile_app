@@ -6,6 +6,7 @@ class AnimatedMenuButton extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
   final bool isActive;
+  final int? badgeCount;
 
   const AnimatedMenuButton({
     super.key,
@@ -13,6 +14,7 @@ class AnimatedMenuButton extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.isActive = false,
+    this.badgeCount,
   });
 
   @override
@@ -35,10 +37,15 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              widget.icon,
-              color: widget.isActive ? activeColor : inactiveColor,
-              size: 24,
+            Badge(
+              isLabelVisible: widget.badgeCount != null && widget.badgeCount! > 0,
+              label: Text(widget.badgeCount?.toString() ?? ''),
+              backgroundColor: Colors.redAccent,
+              child: Icon(
+                widget.icon,
+                color: widget.isActive ? activeColor : inactiveColor,
+                size: 24,
+              ),
             ),
             const SizedBox(height: 4),
             Text(

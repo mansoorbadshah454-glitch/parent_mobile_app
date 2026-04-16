@@ -11,6 +11,8 @@ import '../widgets/animated_menu_button.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'placeholder_screen.dart';
+import '../../chat/providers/chat_provider.dart';
+import '../../alerts/providers/alerts_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -48,6 +50,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final parentDataAsync = ref.watch(parentDataProvider);
+    final chatAsync = ref.watch(chatProvider);
+    final alertsAsync = ref.watch(alertsProvider);
+
+    final unreadChats = chatAsync.value?.where((m) => !m.read).length ?? 0;
+    final unreadAlerts = alertsAsync.value?.where((a) => !a.read).length ?? 0;
     
     return parentDataAsync.when(
       loading: () => const Scaffold(
@@ -250,12 +257,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             icon: Icons.message_rounded,
                             label: 'Chat',
                             isActive: _currentIndex == 2,
+                            badgeCount: unreadChats,
                             onTap: () => _onMenuTap(2),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.notifications_active_rounded,
                             label: 'Alerts',
                             isActive: _currentIndex == 3,
+                            badgeCount: unreadAlerts,
                             onTap: () => _onMenuTap(3),
                           ),
                           AnimatedMenuButton(

@@ -9,6 +9,8 @@ class AlertModel {
   final String type;
   final bool read;
   final DateTime? createdAt;
+  final String? studentId;
+  final String? status;
 
   AlertModel({
     required this.id,
@@ -17,6 +19,8 @@ class AlertModel {
     required this.type,
     required this.read,
     this.createdAt,
+    this.studentId,
+    this.status,
   });
 
   factory AlertModel.fromMap(Map<String, dynamic> map, String id) {
@@ -26,6 +30,8 @@ class AlertModel {
       message: map['message'] ?? '',
       type: map['type'] ?? 'info',
       read: map['read'] ?? false,
+      studentId: map['studentId'],
+      status: map['status'],
       createdAt: map['createdAt'] != null 
           ? (map['createdAt'] as Timestamp).toDate() 
           : null,
@@ -57,7 +63,13 @@ final alertsProvider = StreamProvider<List<AlertModel>>((ref) async* {
       .snapshots();
 
   await for (final snapshot in notificationsStream) {
-    var alerts = snapshot.docs.map((doc) => AlertModel.fromMap(doc.data(), doc.id)).toList();
+    final allowedTypes = ['attendance', 'academic', 'performance', 'health', 'behavior', 'hygiene', 'personality', 'celebration', 'alert', 'info'];
+    
+    var alerts = snapshot.docs
+        .map((doc) => AlertModel.fromMap(doc.data(), doc.id))
+        .where((alert) => allowedTypes.contains(alert.type.toLowerCase()))
+        .toList();
+        
     alerts.sort((a, b) {
       if (a.createdAt == null && b.createdAt == null) return 0;
       if (a.createdAt == null) return 1;
@@ -67,3 +79,69 @@ final alertsProvider = StreamProvider<List<AlertModel>>((ref) async* {
     yield alerts;
   }
 });
+
+// A provider to manage marking alerts as read or deleting them
+final alertsActionProvider = Provider((ref) {
+  return AlertsActionService(ref);
+});
+
+class AlertsActionService {
+  final Ref ref;
+  AlertsActionService(this.ref);
+
+  Future<void> markAsRead(String alertId) async {
+    final parentDataAsync = ref.read(parentDataProvider);
+    final schoolId = parentDataAsync.value?.schoolId;
+    if (schoolId == null || schoolId.isEmpty) return;
+    
+    try {
+      await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('notifications')
+          .doc(alertId)
+          .update({'read': true});
+    } catch (e) {
+      print('Error marking alert read: $e');
+    }
+  }
+
+  Future<void> deleteAlert(String alertId) async {
+    final parentDataAsync = ref.read(parentDataProvider);
+    final schoolId = parentDataAsync.value?.schoolId;
+    if (schoolId == null || schoolId.isEmpty) return;
+    
+    try {
+      await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('notifications')
+          .doc(alertId)
+          .delete();
+    } catch (e) {
+      print('Error deleting alert: $e');
+    }
+  }
+
+  Future<void> clearAllAlerts(List<String> alertIds) async {
+    final parentDataAsync = ref.read(parentDataProvider);
+    final schoolId = parentDataAsync.value?.schoolId;
+    if (schoolId == null || schoolId.isEmpty) return;
+
+    final batch = FirebaseFirestore.instance.batch();
+    for (String id in alertIds) {
+      final docRef = FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('notifications')
+          .doc(id);
+      batch.delete(docRef);
+    }
+    
+    try {
+      await batch.commit();
+    } catch (e) {
+      print('Error clearing alerts: $e');
+    }
+  }
+}
