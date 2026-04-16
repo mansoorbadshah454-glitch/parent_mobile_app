@@ -79,3 +79,39 @@ final chatProvider = StreamProvider<List<MessageModel>>((ref) async* {
     yield messages;
   }
 });
+
+final kidChatProvider = StreamProvider.family<List<MessageModel>, String>((ref, studentId) async* {
+  final parentDataAsync = ref.watch(parentDataProvider);
+
+  if (parentDataAsync.value == null) {
+    yield [];
+    return;
+  }
+
+  final schoolId = parentDataAsync.value!.schoolId;
+  final parentId = parentDataAsync.value!.uid;
+
+  if (schoolId.isEmpty || parentId.isEmpty || studentId.isEmpty) {
+    yield [];
+    return;
+  }
+
+  final messagesStream = FirebaseFirestore.instance
+      .collection('schools')
+      .doc(schoolId)
+      .collection('messages')
+      .where('parentId', isEqualTo: parentId)
+      .where('studentId', isEqualTo: studentId)
+      .snapshots();
+
+  await for (final snapshot in messagesStream) {
+    var messages = snapshot.docs.map((doc) => MessageModel.fromMap(doc.data(), doc.id)).toList();
+    messages.sort((a, b) {
+      if (a.timestamp == null && b.timestamp == null) return 0;
+      if (a.timestamp == null) return 1;
+      if (b.timestamp == null) return -1;
+      return b.timestamp!.compareTo(a.timestamp!);
+    });
+    yield messages;
+  }
+});

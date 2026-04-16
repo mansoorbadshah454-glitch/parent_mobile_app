@@ -1,75 +1,171 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../providers/kids_provider.dart';
+import '../../chat/providers/chat_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 
-enum MessageType { text, image, voice }
+// Adding Audio Player widget
+class _AudioMessageWidget extends StatefulWidget {
+  final String url;
+  const _AudioMessageWidget({Key? key, required this.url}) : super(key: key);
 
-class MockMessage {
-  final String id;
-  final MessageType type;
-  final String content;
-  final DateTime timestamp;
-  final String duration; // For voice
-
-  MockMessage({
-    required this.id,
-    required this.type,
-    required this.content,
-    required this.timestamp,
-    this.duration = "",
-  });
+  @override
+  State<_AudioMessageWidget> createState() => _AudioMessageWidgetState();
 }
 
-class ChatTabContent extends StatefulWidget {
+class _AudioMessageWidgetState extends State<_AudioMessageWidget> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = state == PlayerState.playing;
+        });
+      }
+    });
+
+    _audioPlayer.onDurationChanged.listen((newDuration) {
+      if (mounted) setState(() => _duration = newDuration);
+    });
+
+    _audioPlayer.onPositionChanged.listen((newPosition) {
+      if (mounted) setState(() => _position = newPosition);
+    });
+    
+    // We initially load to get duration but don't play
+    _initAudio();
+  }
+
+  Future<void> _initAudio() async {
+    try {
+      await _audioPlayer.setSourceUrl(widget.url);
+    } catch (e) {
+      debugPrint("Error loading audio: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(d.inMinutes.remainder(60));
+    final seconds = twoDigits(d.inSeconds.remainder(60));
+    return "$minutes:$seconds";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () async {
+                if (_isPlaying) {
+                  await _audioPlayer.pause();
+                } else {
+                  setState(() => _isLoading = true);
+                  await _audioPlayer.play(UrlSource(widget.url));
+                  setState(() => _isLoading = false);
+                }
+              },
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: ThemeColors.primaryPurple,
+                child: _isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: 2.0,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                  activeTrackColor: ThemeColors.primaryPurple,
+                  inactiveTrackColor: Colors.grey.shade300,
+                  thumbColor: ThemeColors.primaryPurple,
+                ),
+                child: Slider(
+                  min: 0.0,
+                  max: _duration.inMilliseconds > 0 ? _duration.inMilliseconds.toDouble() : 1.0,
+                  value: _position.inMilliseconds > 0 && _position.inMilliseconds <= _duration.inMilliseconds
+                      ? _position.inMilliseconds.toDouble()
+                      : 0.0,
+                  onChanged: (value) {
+                    _audioPlayer.seek(Duration(milliseconds: value.toInt()));
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _formatDuration(_position.inSeconds > 0 ? _position : _duration),
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ChatTabContent extends ConsumerStatefulWidget {
   final KidData kid;
   
   const ChatTabContent({Key? key, required this.kid}) : super(key: key);
 
   @override
-  State<ChatTabContent> createState() => _ChatTabContentState();
+  ConsumerState<ChatTabContent> createState() => _ChatTabContentState();
 }
 
-class _ChatTabContentState extends State<ChatTabContent> {
+class _ChatTabContentState extends ConsumerState<ChatTabContent> {
   bool _isSelectionMode = false;
   final Set<String> _selectedMessageIds = {};
-  
-  List<MockMessage> _messages = [];
+  Set<String> _hiddenMessageIds = {};
 
   @override
   void initState() {
     super.initState();
-    _loadMockMessages();
+    _loadHiddenMessages();
   }
 
-  void _loadMockMessages() {
-    _messages = [
-      MockMessage(
-        id: '1',
-        type: MessageType.text,
-        content: "Dear Parents, welcome to our direct class channel. You'll receive important updates here.",
-        timestamp: DateTime.now().subtract(const Duration(days: 3, hours: 4)),
-      ),
-      MockMessage(
-        id: '2',
-        type: MessageType.voice,
-        content: "Voice note", 
-        duration: "0:45",
-        timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      ),
-      MockMessage(
-        id: '3',
-        type: MessageType.image,
-        content: "mock", 
-        timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      ),
-      MockMessage(
-        id: '4',
-        type: MessageType.text,
-        content: "Just a friendly reminder about the science project deadline coming up this Friday!",
-        timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
-      ),
-    ];
+  Future<void> _loadHiddenMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hiddenList = prefs.getStringList('hidden_messages_${widget.kid.id}') ?? [];
+    if (mounted) {
+      setState(() {
+        _hiddenMessageIds = hiddenList.toSet();
+      });
+    }
+  }
+
+  Future<void> _saveHiddenMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('hidden_messages_${widget.kid.id}', _hiddenMessageIds.toList());
   }
 
   void _toggleSelectionMode() {
@@ -93,13 +189,14 @@ class _ChatTabContentState extends State<ChatTabContent> {
 
   void _deleteSelected() {
     setState(() {
-      _messages.removeWhere((msg) => _selectedMessageIds.contains(msg.id));
+      _hiddenMessageIds.addAll(_selectedMessageIds);
       _isSelectionMode = false;
       _selectedMessageIds.clear();
     });
+    _saveHiddenMessages();
   }
 
-  void _clearHistory() {
+  void _clearHistory(List<MessageModel> currentMessages) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -113,8 +210,9 @@ class _ChatTabContentState extends State<ChatTabContent> {
           TextButton(
             onPressed: () {
               setState(() {
-                _messages.clear();
+                _hiddenMessageIds.addAll(currentMessages.map((e) => e.id));
               });
+              _saveHiddenMessages();
               Navigator.pop(ctx);
             },
             child: const Text("Clear All", style: TextStyle(color: Colors.red)),
@@ -126,6 +224,8 @@ class _ChatTabContentState extends State<ChatTabContent> {
 
   @override
   Widget build(BuildContext context) {
+    final chatAsync = ref.watch(kidChatProvider(widget.kid.id));
+
     return Column(
       children: [
         // Top Action Bar
@@ -177,42 +277,47 @@ class _ChatTabContentState extends State<ChatTabContent> {
                   onPressed: _selectedMessageIds.isEmpty ? null : _deleteSelected,
                 )
               else
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: ThemeColors.secondaryText),
-                  onSelected: (value) {
-                    if (value == 'select') {
-                      _toggleSelectionMode();
-                    } else if (value == 'clear') {
-                      _clearHistory();
-                    }
+                chatAsync.maybeWhen(
+                  data: (messages) {
+                    final visibleMessages = messages.where((m) => !_hiddenMessageIds.contains(m.id)).toList();
+                    return PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: ThemeColors.secondaryText),
+                      onSelected: (value) {
+                        if (value == 'select') {
+                          _toggleSelectionMode();
+                        } else if (value == 'clear') {
+                          _clearHistory(visibleMessages);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'select',
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_box_outlined, size: 20, color: ThemeColors.secondaryText),
+                              SizedBox(width: 8),
+                              Text("Select to Delete"),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'clear',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_sweep_outlined, size: 20, color: ThemeColors.secondaryText),
+                              SizedBox(width: 8),
+                              Text("Clear History"),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
                   },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'select',
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_box_outlined, size: 20, color: ThemeColors.secondaryText),
-                          SizedBox(width: 8),
-                          Text("Select to Delete"),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'clear',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_sweep_outlined, size: 20, color: ThemeColors.secondaryText),
-                          SizedBox(width: 8),
-                          Text("Clear History"),
-                        ],
-                      ),
-                    ),
-                  ],
+                  orElse: () => const SizedBox(),
                 ),
             ],
           ),
         ),
-
 
         // Chat View
         Expanded(
@@ -225,24 +330,44 @@ class _ChatTabContentState extends State<ChatTabContent> {
               ),
               color: Color(0xFFF7F7F9),
             ),
-            child: _messages.isEmpty
-                ? const Center(
-                    child: Text(
-                      "No messages found.",
-                      style: TextStyle(color: ThemeColors.secondaryText),
-                    ),
-                  )
-                : ListView.builder(
+            child: chatAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text("Error: $err")),
+              data: (messages) {
+                final visibleMessages = messages.where((m) => !_hiddenMessageIds.contains(m.id)).toList();
+                
+                final displayMessages = visibleMessages.reversed.toList();
+
+                if (displayMessages.isEmpty) {
+                  return ListView(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return _buildInfoBadge();
-                      }
-                      final msg = _messages[index];
-                      return _buildMessageRow(msg);
-                    },
-                  ),
+                    children: [
+                       const SizedBox(height: 50),
+                       const Center(
+                        child: Text(
+                          "No messages found.",
+                          style: TextStyle(color: ThemeColors.secondaryText),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildInfoBadge(),
+                    ],
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: displayMessages.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == displayMessages.length) {
+                      return _buildInfoBadge(); 
+                    }
+                    final msg = displayMessages[index];
+                    return _buildMessageRow(msg);
+                  },
+                );
+              },
+            ),
           ),
         ),
         
@@ -304,7 +429,7 @@ class _ChatTabContentState extends State<ChatTabContent> {
     );
   }
 
-  Widget _buildMessageRow(MockMessage msg) {
+  Widget _buildMessageRow(MessageModel msg) {
     bool isSelected = _selectedMessageIds.contains(msg.id);
     
     return Padding(
@@ -387,128 +512,111 @@ class _ChatTabContentState extends State<ChatTabContent> {
     );
   }
 
-  Widget _buildBubbleContent(MockMessage msg) {
-    if (msg.type == MessageType.text) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+  Widget _buildBubbleContent(MessageModel msg) {
+    if (msg.attachmentType != null) {
+      final type = msg.attachmentType!.toLowerCase();
+      if (type == 'audio') {
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _AudioMessageWidget(url: msg.attachmentUrl ?? ''),
+              _buildTimestampOffset(msg.timestamp),
+            ],
+          ),
+        );
+      } else if (type == 'jpg' || type == 'jpeg' || type == 'png' || type == 'gif') {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              msg.content,
-              style: const TextStyle(
-                fontSize: 15,
-                color: ThemeColors.primaryText,
-                height: 1.3,
+            Container(
+              constraints: const BoxConstraints(maxHeight: 300),
+              width: double.infinity,
+              color: Colors.grey.shade300,
+              child: CachedNetworkImage(
+                imageUrl: msg.attachmentUrl ?? '',
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
               ),
             ),
-            const SizedBox(height: 6),
-            _buildTimestampOffset(msg.timestamp),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+              child: _buildTimestampOffset(msg.timestamp),
+            )
           ],
-        ),
-      );
-    } 
-    else if (msg.type == MessageType.image) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Mock Image Area
-          Container(
-            height: 200,
-            width: double.infinity,
-            color: Colors.grey.shade300,
-            child: Stack(
+        );
+      } else {
+        // Document/File type
+        return InkWell(
+          onTap: () async {
+             if (msg.attachmentUrl != null) {
+               final uri = Uri.parse(msg.attachmentUrl!);
+               if (await canLaunchUrl(uri)) {
+                 await launchUrl(uri, mode: LaunchMode.externalApplication);
+               }
+             }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Center(
-                  child: Icon(Icons.image_outlined, size: 48, color: Colors.grey),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
-                      shape: BoxShape.circle,
+                Row(
+                  children: [
+                    const Icon(Icons.insert_drive_file, color: Colors.blue, size: 30),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Attachment (${type.toUpperCase()})",
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    child: IconButton(
-                      icon: const Icon(Icons.download_rounded, color: Colors.white, size: 20),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Downloading to device...')),
-                        );
-                      },
-                    ),
-                  ),
+                  ],
                 ),
+                const SizedBox(height: 6),
+                _buildTimestampOffset(msg.timestamp),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-            child: _buildTimestampOffset(msg.timestamp),
-          )
-        ],
-      );
+        );
+      }
     } 
-    else if (msg.type == MessageType.voice) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: ThemeColors.primaryPurple,
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                // Mock WA Waveform Using lines
-                Expanded(
-                  child: Row(
-                    children: List.generate(20, (index) {
-                      final height = (index % 3 == 0) ? 18.0 : ((index % 2 == 0) ? 8.0 : 12.0);
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                        width: 3,
-                        height: height,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade400,
-                          borderRadius: BorderRadius.circular(1.5),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-              ],
+
+    // Text fallback
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            msg.message,
+            style: const TextStyle(
+              fontSize: 15,
+              color: ThemeColors.primaryText,
+              height: 1.3,
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  msg.duration,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                _buildTimestampOffset(msg.timestamp),
-              ],
-            )
-          ],
-        ),
-      );
-    }
-    return const SizedBox();
+          ),
+          const SizedBox(height: 6),
+          _buildTimestampOffset(msg.timestamp),
+        ],
+      ),
+    );
   }
 
-  Widget _buildTimestampOffset(DateTime t) {
+  Widget _buildTimestampOffset(DateTime? t) {
+    if (t == null) return const SizedBox();
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.end,

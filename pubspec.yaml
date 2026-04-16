@@ -48,7 +48,7 @@ dependencies:
   video_player: ^2.8.5
   chewie: ^1.8.1
   flutter_file_downloader: ^1.2.1
-
+  audioplayers: ^6.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
