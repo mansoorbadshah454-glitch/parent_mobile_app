@@ -4,13 +4,73 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../providers/chat_provider.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../../kids/screens/kid_details_screen.dart';
-import '../../../core/theme/theme_colors.dart';
+import '../../../core/theme/theme_colors.dart';import '../../../core/providers/parent_data_provider.dart';
 
-class ChatScreen extends ConsumerWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  bool isSelectionMode = false;
+  Set<String> selectedMessageIds = {};
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (selectedMessageIds.contains(id)) {
+        selectedMessageIds.remove(id);
+      } else {
+        selectedMessageIds.add(id);
+      }
+      if (selectedMessageIds.isEmpty) {
+        isSelectionMode = false;
+      }
+    });
+  }
+
+  void _toggleGroupSelection(List<MessageModel> msgs) {
+    setState(() {
+      final allIds = msgs.map((m) => m.id).toSet();
+      final isAllSelected = selectedMessageIds.containsAll(allIds);
+      if (isAllSelected) {
+        selectedMessageIds.removeAll(allIds);
+      } else {
+        selectedMessageIds.addAll(allIds);
+      }
+      if (selectedMessageIds.isEmpty) {
+        isSelectionMode = false;
+      }
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    final parentData = ref.read(parentDataProvider).value;
+    if (parentData == null) return;
+    
+    await ChatService.deleteMessages(parentData.schoolId, selectedMessageIds.toList());
+    
+    setState(() {
+      selectedMessageIds.clear();
+      isSelectionMode = false;
+    });
+  }
+
+  Future<void> _clearAllChats() async {
+    final parentData = ref.read(parentDataProvider).value;
+    if (parentData == null) return;
+    
+    await ChatService.clearAllChats(parentData.schoolId, parentData.uid);
+    
+    setState(() {
+      selectedMessageIds.clear();
+      isSelectionMode = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final chatAsyncValue = ref.watch(chatProvider);
     final kidsAsyncValue = ref.watch(kidsProvider);
 
@@ -40,11 +100,80 @@ class ChatScreen extends ConsumerWidget {
           // 4. Build custom list of widgets
           List<Widget> listItems = [];
 
+          // Top Header & Selection Bar
+          if (isSelectionMode) {
+            listItems.add(Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: ThemeColors.primaryPurple.withOpacity(0.1),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: ThemeColors.primaryPurple),
+                    onPressed: () {
+                      setState(() {
+                        isSelectionMode = false;
+                        selectedMessageIds.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Text('${selectedMessageIds.length} Selected',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: ThemeColors.primaryPurple),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: _deleteSelected,
+                  ),
+                ],
+              ),
+            ));
+          }
+
+          final topPopupMenu = PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.grey),
+            onSelected: (value) {
+              if (value == 'select') {
+                setState(() {
+                  isSelectionMode = true;
+                });
+              } else if (value == 'clear') {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Clear Chat'),
+                    content: const Text('Are you sure you want to clear all chat history? This action cannot be undone.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _clearAllChats();
+                        }, 
+                        child: const Text('Clear', style: TextStyle(color: Colors.red))
+                      ),
+                    ],
+                  )
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'select', child: Text('Select to Delete')),
+              const PopupMenuItem(value: 'clear', child: Text('Clear All Chats')),
+            ],
+          );
+
           // Teacher notification cards at the top
           if (teacherMsgsByStudent.isNotEmpty) {
-            listItems.add(const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text("CLASS TEACHER MESSAGES", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            listItems.add(Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("CLASS TEACHER MESSAGES", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                  if (!isSelectionMode) topPopupMenu,
+                ],
+              ),
             ));
 
             teacherMsgsByStudent.forEach((studentId, msgs) {
@@ -60,36 +189,55 @@ class ChatScreen extends ConsumerWidget {
               ));
               
               final unreadCount = msgs.where((m) => !m.read).length;
+              final allIds = msgs.map((m) => m.id).toSet();
+              final isSelected = selectedMessageIds.containsAll(allIds) && allIds.isNotEmpty;
               
               listItems.add(
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: Material(
-                    color: Colors.white,
+                    color: isSelected ? ThemeColors.primaryPurple.withOpacity(0.05) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     elevation: 1,
                     shadowColor: Colors.black.withOpacity(0.05),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
+                      onLongPress: () {
+                        setState(() {
+                          isSelectionMode = true;
+                          _toggleGroupSelection(msgs);
+                        });
+                      },
                       onTap: () {
-                         Navigator.push(context, MaterialPageRoute(builder: (_) => KidDetailsScreen(kid: kid, initialTabIndex: 3)));
+                         if (isSelectionMode) {
+                           _toggleGroupSelection(msgs);
+                         } else {
+                           Navigator.push(context, MaterialPageRoute(builder: (_) => KidDetailsScreen(kid: kid, initialTabIndex: 3)));
+                         }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade100),
+                          border: Border.all(color: isSelected ? ThemeColors.primaryPurple : Colors.grey.shade100),
                         ),
                         child: Row(
                           children: [
+                            if (isSelectionMode) ...[
+                              Icon(
+                                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                color: isSelected ? ThemeColors.primaryPurple : Colors.grey,
+                              ),
+                              const SizedBox(width: 12),
+                            ],
                             Container(
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: ThemeColors.primaryPurple.withOpacity(0.1),
+                                color: unreadCount > 0 ? ThemeColors.primaryPurple.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.chat_bubble_outline, color: ThemeColors.primaryPurple),
+                              child: Icon(Icons.chat_bubble_outline, color: unreadCount > 0 ? ThemeColors.primaryPurple : Colors.grey),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -98,7 +246,11 @@ class ChatScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     msgs.first.teacherName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: TextStyle(
+                                      fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500, 
+                                      fontSize: 16,
+                                      color: unreadCount > 0 ? Colors.black87 : Colors.grey[700],
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -107,14 +259,15 @@ class ChatScreen extends ConsumerWidget {
                                       : 'View conversation regarding ${kid.name}',
                                     style: TextStyle(
                                       fontSize: 14, 
-                                      color: unreadCount > 0 ? ThemeColors.primaryPurple : Colors.grey[600],
+                                      color: unreadCount > 0 ? ThemeColors.primaryPurple : Colors.grey[500],
                                       fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal
                                     ),
                                   )
                                 ],
                               ),
                             ),
-                            const Icon(Icons.chevron_right, color: Colors.grey),
+                            if (!isSelectionMode)
+                              const Icon(Icons.chevron_right, color: Colors.grey),
                           ],
                         ),
                       ),
@@ -127,15 +280,54 @@ class ChatScreen extends ConsumerWidget {
           }
 
           if (adminMessages.isNotEmpty) {
-            listItems.add(const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text("SCHOOL NOTIFICATIONS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            listItems.add(Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("SCHOOL NOTIFICATIONS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                  if (!isSelectionMode && teacherMsgsByStudent.isEmpty) topPopupMenu,
+                ],
+              ),
             ));
 
             listItems.addAll(adminMessages.map((msg) {
+               final isSelected = selectedMessageIds.contains(msg.id);
                return Padding(
                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                 child: AdminMessageCard(msg: msg),
+                 child: GestureDetector(
+                   onLongPress: () {
+                     setState(() {
+                       isSelectionMode = true;
+                       _toggleSelection(msg.id);
+                     });
+                   },
+                   onTap: isSelectionMode ? () => _toggleSelection(msg.id) : null,
+                   child: Stack(
+                     children: [
+                       AdminMessageCard(msg: msg),
+                       if (isSelectionMode)
+                         Positioned(
+                           top: 16,
+                           right: 16,
+                           child: Icon(
+                             isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                             color: isSelected ? ThemeColors.primaryPurple : Colors.grey,
+                           ),
+                         ),
+                       if (isSelected)
+                         Positioned.fill(
+                           child: Container(
+                             decoration: BoxDecoration(
+                               color: ThemeColors.primaryPurple.withOpacity(0.1),
+                               borderRadius: BorderRadius.circular(16),
+                               border: Border.all(color: ThemeColors.primaryPurple, width: 2),
+                             ),
+                           ),
+                         ),
+                     ],
+                   ),
+                 ),
                );
             }));
           }

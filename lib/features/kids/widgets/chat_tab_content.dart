@@ -8,6 +8,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../providers/kids_provider.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../core/providers/parent_data_provider.dart';
 
 // Adding Audio Player widget
 class _AudioMessageWidget extends StatefulWidget {
@@ -151,6 +152,12 @@ class _ChatTabContentState extends ConsumerState<ChatTabContent> {
   void initState() {
     super.initState();
     _loadHiddenMessages();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final parentData = ref.read(parentDataProvider).value;
+      if (parentData != null) {
+        ChatService.markAsRead(parentData.schoolId, widget.kid.id, parentData.uid);
+      }
+    });
   }
 
   Future<void> _loadHiddenMessages() async {

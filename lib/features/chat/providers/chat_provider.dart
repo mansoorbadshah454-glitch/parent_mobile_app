@@ -131,3 +131,71 @@ final kidChatProvider = StreamProvider.family<List<MessageModel>, String>((ref, 
     yield messages;
   }
 });
+
+class ChatService {
+  static Future<void> markAsRead(String schoolId, String studentId, String parentId) async {
+    if (schoolId.isEmpty || parentId.isEmpty || studentId.isEmpty) return;
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('messages')
+          .where('parentId', isEqualTo: parentId)
+          .where('studentId', isEqualTo: studentId)
+          .where('read', isEqualTo: false)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) return;
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.update(doc.reference, {'read': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
+  }
+
+  static Future<void> deleteMessages(String schoolId, List<String> messageIds) async {
+    if (schoolId.isEmpty || messageIds.isEmpty) return;
+    
+    final batch = FirebaseFirestore.instance.batch();
+    for (final id in messageIds) {
+      final docRef = FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('messages')
+          .doc(id);
+      batch.delete(docRef);
+    }
+    
+    try {
+      await batch.commit();
+    } catch (e) {
+      print('Error deleting messages: $e');
+    }
+  }
+
+  static Future<void> clearAllChats(String schoolId, String parentId) async {
+    if (schoolId.isEmpty || parentId.isEmpty) return;
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('messages')
+          .where('parentId', isEqualTo: parentId)
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      print('Error clearing all chats: $e');
+    }
+  }
+}
+
