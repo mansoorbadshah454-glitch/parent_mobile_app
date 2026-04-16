@@ -13,6 +13,9 @@ class MessageModel {
   final String? attachmentUrl;
   final String? attachmentType;
   final DateTime? timestamp;
+  final String? type;
+  final String? senderRole;
+  final bool read;
 
   MessageModel({
     required this.id,
@@ -25,7 +28,17 @@ class MessageModel {
     this.attachmentUrl,
     this.attachmentType,
     this.timestamp,
+    this.type,
+    this.senderRole,
+    this.read = true,
   });
+
+  bool get isAdminMessage {
+    if (type == 'admin-message') return true;
+    if (teacherName.toLowerCase() == 'principal' || teacherName.toLowerCase() == 'admin') return true;
+    if (senderRole?.toLowerCase() == 'principal' || senderRole?.toLowerCase() == 'admin') return true;
+    return false;
+  }
 
   factory MessageModel.fromMap(Map<String, dynamic> map, String id) {
     return MessageModel(
@@ -41,6 +54,9 @@ class MessageModel {
       timestamp: map['timestamp'] != null 
           ? (map['timestamp'] as Timestamp).toDate() 
           : null,
+      type: map['type'],
+      senderRole: map['senderRole'],
+      read: map['read'] ?? true,
     );
   }
 }

@@ -12,8 +12,9 @@ import '../../../core/theme/theme_colors.dart';
 
 class KidDetailsScreen extends ConsumerWidget {
   final KidData kid;
+  final int initialTabIndex;
 
-  const KidDetailsScreen({Key? key, required this.kid}) : super(key: key);
+  const KidDetailsScreen({Key? key, required this.kid, this.initialTabIndex = 0}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,6 +26,7 @@ class KidDetailsScreen extends ConsumerWidget {
 
     return DefaultTabController(
       length: 4,
+      initialIndex: initialTabIndex,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Column(
