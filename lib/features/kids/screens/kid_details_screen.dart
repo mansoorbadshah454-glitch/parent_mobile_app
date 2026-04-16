@@ -18,7 +18,10 @@ class KidDetailsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final parentDataAsync = ref.watch(parentDataProvider);
+    final kidsAsyncValue = ref.watch(kidsProvider);
     final topPadding = MediaQuery.of(context).padding.top;
+
+    final currentKid = kidsAsyncValue.value?.firstWhere((k) => k.id == kid.id, orElse: () => kid) ?? kid;
 
     return DefaultTabController(
       length: 4,
@@ -93,13 +96,13 @@ class KidDetailsScreen extends ConsumerWidget {
                   // Student Profile Segment
                   const SizedBox(height: 12),
                   ShiningProfileAvatar(
-                    imageUrl: kid.imageUrl,
+                    imageUrl: currentKid.imageUrl,
                     radius: 50,
                     strokeWidth: 4,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    kid.name,
+                    currentKid.name,
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -108,7 +111,7 @@ class KidDetailsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Class: ${kid.className} | Roll No: ${kid.rollNo}',
+                    'Class: ${currentKid.className} | Roll No: ${currentKid.rollNo}',
                     style: const TextStyle(
                       fontSize: 16,
                       color: Colors.white70,
@@ -140,10 +143,10 @@ class KidDetailsScreen extends ConsumerWidget {
             Expanded(
               child: TabBarView(
                 children: [
-                  AcademicTabContent(kid: kid),
-                  PersonalityTabContent(kid: kid),
-                  AttendanceTabContent(kid: kid),
-                  ChatTabContent(kid: kid),
+                  AcademicTabContent(kid: currentKid),
+                  PersonalityTabContent(kid: currentKid),
+                  AttendanceTabContent(kid: currentKid),
+                  ChatTabContent(kid: currentKid),
                 ],
               ),
             ),

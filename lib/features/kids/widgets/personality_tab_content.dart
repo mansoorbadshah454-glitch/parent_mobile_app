@@ -12,18 +12,11 @@ class PersonalityTabContent extends StatefulWidget {
 }
 
 class _PersonalityTabContentState extends State<PersonalityTabContent> {
-  // Mock data representing percentages 0 to 100
-  final double healthScore = 95.0;
-  final double behaviorScore = 88.0;
-  final double hygieneScore = 92.0;
-  
-  late double averageScore;
   bool _startAnimation = false;
 
   @override
   void initState() {
     super.initState();
-    averageScore = (healthScore + behaviorScore + hygieneScore) / 3.0;
     
     // Trigger animation shortly after build
     Future.delayed(const Duration(milliseconds: 150), () {
@@ -84,6 +77,11 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
 
   @override
   Widget build(BuildContext context) {
+    final healthScore = widget.kid.wellness['health']?.toDouble() ?? 80.0;
+    final behaviorScore = widget.kid.wellness['behavior']?.toDouble() ?? 80.0;
+    final hygieneScore = widget.kid.wellness['hygiene']?.toDouble() ?? 80.0;
+    final averageScore = (healthScore + behaviorScore + hygieneScore) / 3.0;
+
     final badgeData = _getPersonalityData(averageScore);
 
     return SingleChildScrollView(
@@ -100,8 +98,9 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildTraitsCard(),
+          _buildTraitsCard(healthScore, behaviorScore, hygieneScore),
           const SizedBox(height: 32),
+
           const Text(
             "Overall Insight",
             style: TextStyle(
@@ -118,7 +117,7 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
     );
   }
 
-  Widget _buildTraitsCard() {
+  Widget _buildTraitsCard(double healthScore, double behaviorScore, double hygieneScore) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(

@@ -9,6 +9,8 @@ class KidData {
   final String className;
   final String classId;
   final String rollNo;
+  final Map<String, int> wellness;
+  final Map<String, String> attendanceHistory;
 
   KidData({
     required this.id,
@@ -17,6 +19,8 @@ class KidData {
     required this.className,
     required this.classId,
     required this.rollNo,
+    required this.wellness,
+    required this.attendanceHistory,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -27,7 +31,25 @@ class KidData {
       className: overrideClassName ?? map['className'] ?? map['class'] ?? 'N/A',
       classId: overrideClassId ?? map['classId']?.toString() ?? '',
       rollNo: map['rollNo']?.toString() ?? map['rollNumber']?.toString() ?? 'N/A',
+      wellness: {
+        'behavior': int.tryParse(map['wellness']?['behavior']?.toString() ?? '80') ?? 80,
+        'health': int.tryParse(map['wellness']?['health']?.toString() ?? '80') ?? 80,
+        'hygiene': int.tryParse(map['wellness']?['hygiene']?.toString() ?? '80') ?? 80,
+      },
+      attendanceHistory: _parseAttendanceSafe(map['attendanceHistory']),
     );
+  }
+
+  static Map<String, String> _parseAttendanceSafe(dynamic data) {
+    if (data == null) return {};
+    if (data is Map) {
+      final safeMap = <String, String>{};
+      data.forEach((key, value) {
+        safeMap[key.toString()] = value.toString();
+      });
+      return safeMap;
+    }
+    return {};
   }
 }
 

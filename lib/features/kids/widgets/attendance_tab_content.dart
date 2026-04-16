@@ -32,10 +32,17 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
     super.initState();
     _currentDate = DateTime.now();
     _displayedMonth = DateTime(_currentDate.year, _currentDate.month, 1);
-    _generateMockDataForMonth();
+    _loadRealAttendanceDataForMonth();
   }
 
-  void _generateMockDataForMonth() {
+  @override
+  void didUpdateWidget(AttendanceTabContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Force a data reload and re-render on any widget update (which happens when Provider emits a new KidData)
+    _loadRealAttendanceDataForMonth();
+  }
+
+  void _loadRealAttendanceDataForMonth() {
     // Reset stats
     totalPresent = 0;
     totalAbsent = 0;
@@ -46,32 +53,29 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
     for (int i = 1; i <= daysInMonth; i++) {
       final date = DateTime(_displayedMonth.year, _displayedMonth.month, i);
       
-      // If it's a weekend (Sat=6, Sun=7)
-      if (date.weekday == 6 || date.weekday == 7) {
-        _mockAttendanceData[date] = 'weekend';
-        continue;
-      }
-
-      // If it's a future date
-      if (date.isAfter(_currentDate)) {
-        _mockAttendanceData[date] = 'upcoming';
-        continue;
-      }
-
-      // Pseudo-random generation based on day so it stays consistent when swapping months
-      final int hash = (date.year * 1000 + date.month * 100 + date.day);
+      String dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       
-      // Let's create some holidays
-      if (hash % 25 == 0) {
-        _mockAttendanceData[date] = 'holiday';
-      } 
-      // User requested Absent to be Red
-      else if (hash % 11 == 0) {
-        _mockAttendanceData[date] = 'absent';
-        totalAbsent++;
+      if (widget.kid.attendanceHistory.containsKey(dateStr)) {
+        // Teacher marked attendance manually! PRIORITIZE THIS over everything else.
+        String status = widget.kid.attendanceHistory[dateStr]!;
+        _mockAttendanceData[date] = status;
+        
+        if (status == 'present') {
+           totalPresent++;
+        } else if (status == 'absent') {
+           totalAbsent++;
+        }
       } else {
-        _mockAttendanceData[date] = 'present';
-        totalPresent++;
+        // Compute default fallback (weekend, upcoming, or unmarked)
+        final todayOnlyDate = DateTime(_currentDate.year, _currentDate.month, _currentDate.day);
+        
+        if (date.weekday == 6 || date.weekday == 7) {
+          _mockAttendanceData[date] = 'weekend';
+        } else if (date.isAfter(todayOnlyDate)) {
+          _mockAttendanceData[date] = 'upcoming';
+        } else {
+          _mockAttendanceData[date] = 'unmarked';
+        }
       }
     }
     setState(() {});
@@ -80,14 +84,14 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
   void _previousMonth() {
     setState(() {
       _displayedMonth = DateTime(_displayedMonth.year, _displayedMonth.month - 1, 1);
-      _generateMockDataForMonth();
+      _loadRealAttendanceDataForMonth();
     });
   }
 
   void _nextMonth() {
     setState(() {
       _displayedMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 1);
-      _generateMockDataForMonth();
+      _loadRealAttendanceDataForMonth();
     });
   }
 
@@ -144,6 +148,8 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
         return Colors.red.shade500; // User explicitly requested red
       case 'holiday':
         return Colors.blue.shade400;
+      case 'unmarked':
+        return Colors.grey.shade400; // Grey color for unmarked days as specifically requested
       case 'weekend':
       case 'upcoming':
       default:

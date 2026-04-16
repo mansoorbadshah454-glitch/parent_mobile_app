@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/parent_data_provider.dart';
-import '../providers/kids_provider.dart';
+
 
 class AcademicPerformanceData {
   final Map<String, double> academicScores;
@@ -13,7 +13,9 @@ class AcademicPerformanceData {
   });
 }
 
-final academicPerformanceProvider = StreamProvider.family<AcademicPerformanceData?, KidData>((ref, kid) async* {
+typedef AcademicPerformanceArgs = ({String id, String classId, String className});
+
+final academicPerformanceProvider = StreamProvider.family<AcademicPerformanceData?, AcademicPerformanceArgs>((ref, args) async* {
   final parentDataAsync = ref.watch(parentDataProvider);
   if (parentDataAsync.value == null) {
     yield null;
@@ -26,16 +28,16 @@ final academicPerformanceProvider = StreamProvider.family<AcademicPerformanceDat
     return;
   }
 
-  String resolvedClassId = kid.classId;
+  String resolvedClassId = args.classId;
 
   // Fallback: If classId is missing (e.g. for legacy students), resolve it using className
-  if (resolvedClassId.isEmpty && kid.className != 'N/A') {
+  if (resolvedClassId.isEmpty && args.className != 'N/A') {
     try {
       final classesSnap = await FirebaseFirestore.instance
           .collection('schools')
           .doc(schoolId)
           .collection('classes')
-          .where('name', isEqualTo: kid.className)
+          .where('name', isEqualTo: args.className)
           .limit(1)
           .get();
 
@@ -59,7 +61,7 @@ final academicPerformanceProvider = StreamProvider.family<AcademicPerformanceDat
       .collection('classes')
       .doc(resolvedClassId)
       .collection('students')
-      .doc(kid.id)
+      .doc(args.id)
       .snapshots();
 
   await for (final snapshot in performanceStream) {

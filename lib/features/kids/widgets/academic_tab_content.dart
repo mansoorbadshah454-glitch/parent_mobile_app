@@ -77,7 +77,11 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
 
   @override
   Widget build(BuildContext context) {
-    final performanceAsync = ref.watch(academicPerformanceProvider(widget.kid));
+    final performanceAsync = ref.watch(academicPerformanceProvider((
+      id: widget.kid.id,
+      classId: widget.kid.classId,
+      className: widget.kid.className,
+    )));
 
     return performanceAsync.when(
       data: (data) {
