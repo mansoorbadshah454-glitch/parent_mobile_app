@@ -15,6 +15,7 @@ import '../../chat/providers/chat_provider.dart';
 import '../../alerts/providers/alerts_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/glowing_school_background.dart';
+import '../../../services/push_notification_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -23,8 +24,9 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+final dashboardTabProvider = StateProvider<int>((ref) => 0);
+
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  int _currentIndex = 0;
   bool _showMenuBar = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final PageController _pageController = PageController();
@@ -38,9 +40,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   ];
 
   void _onMenuTap(int targetIndex) {
-    if (_currentIndex == targetIndex) return;
-    if ((_currentIndex - targetIndex).abs() > 1) {
-      _pageController.jumpToPage(targetIndex > _currentIndex ? targetIndex - 1 : targetIndex + 1);
+    final currentIndex = ref.read(dashboardTabProvider);
+    if (currentIndex == targetIndex) return;
+
+    if (targetIndex == 2) {
+      final parentDataAsync = ref.read(parentDataProvider);
+      final schoolId = parentDataAsync.value?.schoolId;
+      final parentId = parentDataAsync.value?.uid;
+      if (schoolId != null && parentId != null) {
+         ChatService.markAllParentChatsAsRead(schoolId, parentId);
+      }
+    } else if (targetIndex == 3) {
+      ref.read(alertsActionProvider).markAllAsReadGlobally();
+    }
+
+    if ((currentIndex - targetIndex).abs() > 1) {
+      _pageController.jumpToPage(targetIndex > currentIndex ? targetIndex - 1 : targetIndex + 1);
     }
     _pageController.animateToPage(
       targetIndex,
@@ -51,6 +66,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(dashboardTabProvider, (previous, next) {
+      if (_pageController.hasClients && _pageController.page?.round() != next) {
+        _pageController.jumpToPage(next);
+      }
+    });
+
+    final currentIndex = ref.watch(dashboardTabProvider);
     final parentDataAsync = ref.watch(parentDataProvider);
     final chatAsync = ref.watch(chatProvider);
     final alertsAsync = ref.watch(alertsProvider);
@@ -95,6 +117,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           );
         }
+
+        // Initialize push notifications
+        PushNotificationService().init(parentData.schoolId, parentData.uid);
 
         final topPadding = MediaQuery.of(context).padding.top;
 
@@ -257,33 +282,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           AnimatedMenuButton(
                             icon: Icons.article_rounded,
                             label: 'News',
-                            isActive: _currentIndex == 0,
+                            isActive: currentIndex == 0,
                             onTap: () => _onMenuTap(0),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.people_rounded,
                             label: 'Kids',
-                            isActive: _currentIndex == 1,
+                            isActive: currentIndex == 1,
                             onTap: () => _onMenuTap(1),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.message_rounded,
                             label: 'Chat',
-                            isActive: _currentIndex == 2,
+                            isActive: currentIndex == 2,
                             badgeCount: unreadChats,
                             onTap: () => _onMenuTap(2),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.notifications_active_rounded,
                             label: 'Alerts',
-                            isActive: _currentIndex == 3,
+                            isActive: currentIndex == 3,
                             badgeCount: unreadAlerts,
                             onTap: () => _onMenuTap(3),
                           ),
                           AnimatedMenuButton(
                             icon: Icons.receipt_long_rounded,
                             label: 'Fees',
-                            isActive: _currentIndex == 4,
+                            isActive: currentIndex == 4,
                             onTap: () => _onMenuTap(4),
                           ),
                         ],
@@ -317,8 +342,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: PageView(
                 controller: _pageController,
                 onPageChanged: (index) {
+                  ref.read(dashboardTabProvider.notifier).state = index;
                   setState(() {
-                    _currentIndex = index;
                     _showMenuBar = true; // reset to show menu horizontally
                   });
                 },

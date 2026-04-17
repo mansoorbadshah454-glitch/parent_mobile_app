@@ -144,4 +144,32 @@ class AlertsActionService {
       print('Error clearing alerts: $e');
     }
   }
+
+  Future<void> markAllAsReadGlobally() async {
+    final parentDataAsync = ref.read(parentDataProvider);
+    final schoolId = parentDataAsync.value?.schoolId;
+    final parentId = parentDataAsync.value?.uid;
+    
+    if (schoolId == null || schoolId.isEmpty || parentId == null || parentId.isEmpty) return;
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('notifications')
+          .where('parentId', isEqualTo: parentId)
+          .where('read', isEqualTo: false)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) return;
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.update(doc.reference, {'read': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      print('Error marking all alerts as read globally: $e');
+    }
+  }
 }

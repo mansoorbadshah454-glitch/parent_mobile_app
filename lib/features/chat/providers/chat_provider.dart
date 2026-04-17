@@ -197,5 +197,28 @@ class ChatService {
       print('Error clearing all chats: $e');
     }
   }
+
+  static Future<void> markAllParentChatsAsRead(String schoolId, String parentId) async {
+    if (schoolId.isEmpty || parentId.isEmpty) return;
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolId)
+          .collection('messages')
+          .where('parentId', isEqualTo: parentId)
+          .where('read', isEqualTo: false)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) return;
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.update(doc.reference, {'read': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      print('Error marking all parent chats as read: $e');
+    }
+  }
 }
 

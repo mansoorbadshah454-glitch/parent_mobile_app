@@ -49,6 +49,8 @@ dependencies:
   chewie: ^1.8.1
   flutter_file_downloader: ^1.2.1
   audioplayers: ^6.0.0
+  firebase_messaging: ^15.0.0
+  flutter_local_notifications: ^17.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
