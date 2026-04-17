@@ -34,6 +34,18 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
         iconData = isPresent ? Icons.check_circle_outline : Icons.cancel_outlined;
         color = isPresent ? Colors.green : Colors.redAccent;
         break;
+      case 'behavior':
+        iconData = Icons.psychology_rounded;
+        color = Colors.indigoAccent;
+        break;
+      case 'health':
+        iconData = Icons.health_and_safety_rounded;
+        color = Colors.pinkAccent;
+        break;
+      case 'hygiene':
+        iconData = Icons.clean_hands_rounded;
+        color = Colors.cyan.shade600;
+        break;
       case 'personality':
         iconData = Icons.volunteer_activism_rounded;
         color = Colors.teal.shade500; // Distinct thick teal for personality
