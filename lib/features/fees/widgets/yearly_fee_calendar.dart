@@ -91,10 +91,10 @@ class YearlyFeeCalendar extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.1, // Adjusted since we remove text
+                crossAxisCount: 4,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.0, // Adjusted since we remove text
               ),
               itemCount: months.length,
               itemBuilder: (context, index) {
@@ -157,7 +157,7 @@ class YearlyFeeCalendar extends StatelessWidget {
                 Text(
                   month.monthName,
                   style: GoogleFonts.montserrat(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: textColor == Colors.white ? Colors.white : ThemeColors.primaryText,
                   ),

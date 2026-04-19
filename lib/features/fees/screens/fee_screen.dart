@@ -6,6 +6,7 @@ import '../widgets/reliability_score_chart.dart';
 import '../widgets/yearly_fee_calendar.dart';
 import '../services/fee_calculator_service.dart';
 import '../../kids/providers/kids_provider.dart';
+import '../providers/fee_settings_provider.dart';
 
 class FeeScreen extends ConsumerWidget {
   final KidData kid;
@@ -16,6 +17,12 @@ class FeeScreen extends ConsumerWidget {
     final kidsAsyncValue = ref.watch(kidsProvider);
     final kidsList = kidsAsyncValue.value ?? [];
     final currentKid = kidsList.firstWhere((k) => k.id == kid.id, orElse: () => kid);
+
+    final feeSettingsAsync = ref.watch(feeSettingsProvider);
+    final feeSettings = feeSettingsAsync.value ?? {};
+    final String dueDate = feeSettings['dueDate']?.toString().isNotEmpty == true ? feeSettings['dueDate'].toString() : '10th';
+    final String penaltyAmount = feeSettings['penaltyAmount']?.toString().isNotEmpty == true ? feeSettings['penaltyAmount'].toString() : '500';
+    final String calendarInfoMessage = "Kindly ensure fee submissions are completed by the $dueDate to avoid a late penalty of Rs. $penaltyAmount.";
 
     List<int> paymentHistory = [1, 5, 2, 8, 4]; // Dummy history for past months
     if (currentKid.monthlyFeeStatus.toLowerCase() == 'paid' && currentKid.monthlyFeeDate != null) {
@@ -161,7 +168,7 @@ class FeeScreen extends ConsumerWidget {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'Important information goes here.',
+                                  calendarInfoMessage,
                                   style: GoogleFonts.montserrat(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
