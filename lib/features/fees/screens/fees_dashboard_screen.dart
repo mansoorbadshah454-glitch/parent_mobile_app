@@ -21,9 +21,8 @@ class FeesDashboardScreen extends ConsumerWidget {
             return const Center(child: Text('No kids linked to this account.'));
           }
           
-          // Using mock data for stats to fulfill the UX requirement
           final int totalKids = kids.length;
-          final int paidKids = totalKids > 1 ? totalKids - 1 : 0; 
+          final int paidKids = kids.where((k) => k.monthlyFeeStatus.toLowerCase() == 'paid').length; 
           final int unpaidKids = totalKids - paidKids;
 
           return CustomScrollView(
@@ -63,10 +62,9 @@ class FeesDashboardScreen extends ConsumerWidget {
                   (context, index) {
                     final kid = kids[index];
                     
-                    // Mock fee logic based on index parity for visual variance
-                    final isPaid = index % 2 == 0;
+                    final isPaid = kid.monthlyFeeStatus.toLowerCase() == 'paid';
                     final dueBadgeColor = isPaid ? Colors.green : Colors.redAccent;
-                    final dueBadgeText = isPaid ? 'Fee Paid' : 'Due: May 5th';
+                    final dueBadgeText = isPaid ? 'Fee Paid' : 'Unpaid';
 
                     return Card(
                       color: Colors.white,

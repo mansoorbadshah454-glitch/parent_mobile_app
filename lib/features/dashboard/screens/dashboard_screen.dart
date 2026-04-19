@@ -21,6 +21,8 @@ import '../../menu/screens/bank_details_screen.dart';
 import '../../menu/screens/help_support_screen.dart';
 import '../../menu/screens/about_screen.dart';
 import '../../menu/screens/settings_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../kids/providers/kids_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -35,6 +37,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _showMenuBar = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final PageController _pageController = PageController();
+  bool _hasCheckedOverdueFees = false;
+
+  void _checkOverdueFees(List<KidData> kids) async {
+    if (_hasCheckedOverdueFees) return;
+    _hasCheckedOverdueFees = true;
+
+    final today = DateTime.now();
+    bool hasUnpaid = kids.any((k) => k.monthlyFeeStatus.toLowerCase() == 'unpaid');
+    
+    // Push the local notification initializer early so we can schedule
+    await PushNotificationService().initLocalNotifications();
+
+    if (hasUnpaid) {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = '${today.year}-${today.month}-${today.day}';
+      final lastCheckedDate = prefs.getString('last_fee_date') ?? '';
+      int currentCount = 0;
+      
+      if (lastCheckedDate == dateKey) {
+        currentCount = prefs.getInt('fee_reminder_count') ?? 0;
+      } else {
+        prefs.setString('last_fee_date', dateKey);
+        currentCount = 0;
+      }
+      
+      for (final kid in kids.where((k) => k.monthlyFeeStatus.toLowerCase() == 'unpaid')) {
+        PushNotificationService().scheduleFeeReminders(kid);
+
+        if (currentCount < 2) {
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            PushNotificationService.showGlobalAlert(
+              'Fee Reminder',
+              'Please clear the pending fee for ${kid.name}.',
+              'fee',
+              isEmergency: true,
+            );
+          });
+        }
+      }
+      // only increment count if we actually showed it to unpaid folks
+      if (currentCount < 2) prefs.setInt('fee_reminder_count', currentCount + 1);
+    } else {
+      for (final kid in kids) {
+        PushNotificationService().cancelFeeReminders(kid);
+      }
+    }
+  }
 
   final List<Widget> _screens = [
     const NewsScreen(),
@@ -74,6 +123,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.listen<int>(dashboardTabProvider, (previous, next) {
       if (_pageController.hasClients && _pageController.page?.round() != next) {
         _pageController.jumpToPage(next);
+      }
+    });
+
+    ref.listen<AsyncValue<List<KidData>>>(kidsProvider, (previous, next) {
+      if (next.value == null) return;
+      final kids = next.value!;
+      
+      if (!_hasCheckedOverdueFees && kids.isNotEmpty) {
+        _checkOverdueFees(kids);
+      } else if (previous != null && previous.value != null) {
+        for (final newKid in kids) {
+          final oldKid = previous.value!.firstWhere((k) => k.id == newKid.id, orElse: () => newKid);
+          if (oldKid.monthlyFeeStatus.toLowerCase() == 'unpaid' && newKid.monthlyFeeStatus.toLowerCase() == 'paid') {
+            PushNotificationService.showGlobalAlert(
+              'Fee Processed Successfully',
+              'Thank you! The monthly fee for ${newKid.name} is now cleared.',
+              'fee',
+            );
+            PushNotificationService().cancelFeeReminders(newKid);
+          } else if (oldKid.monthlyFeeStatus.toLowerCase() == 'paid' && newKid.monthlyFeeStatus.toLowerCase() == 'unpaid') {
+            PushNotificationService().scheduleFeeReminders(newKid);
+          }
+        }
       }
     });
 

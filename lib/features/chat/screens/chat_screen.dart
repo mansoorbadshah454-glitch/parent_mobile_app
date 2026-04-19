@@ -186,6 +186,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 rollNo: '',
                 wellness: {},
                 attendanceHistory: {},
+                monthlyFeeStatus: 'unpaid',
               ));
               
               final unreadCount = msgs.where((m) => !m.read).length;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/theme_colors.dart';
+import '../../kids/providers/kids_provider.dart';
 
 enum FeeStatus { paid, pending, overdue, upcoming }
 
@@ -13,22 +14,49 @@ class MonthFee {
 }
 
 class YearlyFeeCalendar extends StatelessWidget {
-  YearlyFeeCalendar({super.key});
+  final KidData kid;
+  const YearlyFeeCalendar({super.key, required this.kid});
 
-  final List<MonthFee> months = [
-    MonthFee(monthName: 'Jan', status: FeeStatus.paid, amount: 150),
-    MonthFee(monthName: 'Feb', status: FeeStatus.paid, amount: 150),
-    MonthFee(monthName: 'Mar', status: FeeStatus.paid, amount: 150),
-    MonthFee(monthName: 'Apr', status: FeeStatus.paid, amount: 150),
-    MonthFee(monthName: 'May', status: FeeStatus.pending, amount: 150),
-    MonthFee(monthName: 'Jun', status: FeeStatus.upcoming, amount: 0),
-    MonthFee(monthName: 'Jul', status: FeeStatus.upcoming, amount: 0),
-    MonthFee(monthName: 'Aug', status: FeeStatus.upcoming, amount: 0),
-    MonthFee(monthName: 'Sep', status: FeeStatus.upcoming, amount: 0),
-    MonthFee(monthName: 'Oct', status: FeeStatus.upcoming, amount: 0),
-    MonthFee(monthName: 'Nov', status: FeeStatus.upcoming, amount: 0),
-    MonthFee(monthName: 'Dec', status: FeeStatus.upcoming, amount: 0),
-  ];
+  List<MonthFee> get months {
+    final now = DateTime.now();
+    final currentMonth = now.month;
+    final currentYear = now.year;
+
+    bool isPaid = kid.monthlyFeeStatus.toLowerCase() == 'paid';
+    DateTime? paidDate = kid.monthlyFeeDate != null ? DateTime.tryParse(kid.monthlyFeeDate!)?.toLocal() : null;
+
+    final List<String> monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    List<MonthFee> activeMonths = [];
+    for (int i = 0; i < 12; i++) {
+      int monthNumber = i + 1;
+      FeeStatus status;
+
+      if (monthNumber < currentMonth) {
+        status = FeeStatus.paid; // Mock past months as paid
+      } else if (monthNumber == currentMonth) {
+        if (isPaid) {
+          status = FeeStatus.paid;
+        } else {
+          status = FeeStatus.pending;
+        }
+      } else {
+        status = FeeStatus.upcoming;
+      }
+
+      // Edge case: paid for a different month explicitly
+      if (isPaid && paidDate != null && monthNumber == paidDate.month && paidDate.year == currentYear) {
+        status = FeeStatus.paid;
+      }
+
+      activeMonths.add(MonthFee(
+        monthName: monthNames[i],
+        status: status,
+        amount: 150,
+      ));
+    }
+    return activeMonths;
+  }
 
   @override
   Widget build(BuildContext context) {

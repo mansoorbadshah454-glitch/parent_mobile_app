@@ -11,6 +11,8 @@ class KidData {
   final String rollNo;
   final Map<String, int> wellness;
   final Map<String, String> attendanceHistory;
+  final String monthlyFeeStatus;
+  final String? monthlyFeeDate;
 
   KidData({
     required this.id,
@@ -21,6 +23,8 @@ class KidData {
     required this.rollNo,
     required this.wellness,
     required this.attendanceHistory,
+    required this.monthlyFeeStatus,
+    this.monthlyFeeDate,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -37,6 +41,8 @@ class KidData {
         'hygiene': int.tryParse(map['wellness']?['hygiene']?.toString() ?? '80') ?? 80,
       },
       attendanceHistory: _parseAttendanceSafe(map['attendanceHistory']),
+      monthlyFeeStatus: map['monthlyFeeStatus']?.toString() ?? 'unpaid',
+      monthlyFeeDate: map['monthlyFeeDate']?.toString(),
     );
   }
 

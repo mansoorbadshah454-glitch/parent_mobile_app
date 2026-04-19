@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/theme_colors.dart';
 import '../widgets/reliability_score_chart.dart';
@@ -6,13 +7,24 @@ import '../widgets/yearly_fee_calendar.dart';
 import '../services/fee_calculator_service.dart';
 import '../../kids/providers/kids_provider.dart';
 
-class FeeScreen extends StatelessWidget {
+class FeeScreen extends ConsumerWidget {
   final KidData kid;
   const FeeScreen({super.key, required this.kid});
 
   @override
-  Widget build(BuildContext context) {
-    final paymentHistory = const [1, 5, 2, 8, 4, 12];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final kidsAsyncValue = ref.watch(kidsProvider);
+    final kidsList = kidsAsyncValue.value ?? [];
+    final currentKid = kidsList.firstWhere((k) => k.id == kid.id, orElse: () => kid);
+
+    List<int> paymentHistory = [1, 5, 2, 8, 4]; // Dummy history for past months
+    if (currentKid.monthlyFeeStatus.toLowerCase() == 'paid' && currentKid.monthlyFeeDate != null) {
+      final date = DateTime.tryParse(currentKid.monthlyFeeDate!)?.toLocal();
+      if (date != null) {
+        paymentHistory.add(date.day);
+      }
+    }
+
     double score = FeeCalculatorService.calculateAggregateScore(paymentHistory);
     String badgeMessage = FeeCalculatorService.getReliabilityMessage(score);
     Color badgeColor = FeeCalculatorService.getReliabilityColor(score);
@@ -25,7 +37,7 @@ class FeeScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: ThemeColors.primaryPurple,
           elevation: 0,
-          title: Text('${kid.name}\'s Fees', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+          title: Text('${currentKid.name}\'s Fees', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
             onPressed: () => Navigator.pop(context),
@@ -130,7 +142,7 @@ class FeeScreen extends StatelessWidget {
                     children: [
                       const SizedBox(height: 10),
                       // Yearly Fee Grid
-                      YearlyFeeCalendar(),
+                      YearlyFeeCalendar(kid: currentKid),
                       const SizedBox(height: 20),
                       // Info Badge Restored
                       Padding(
