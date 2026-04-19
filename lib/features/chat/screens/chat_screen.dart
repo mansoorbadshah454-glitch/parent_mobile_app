@@ -245,7 +245,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    msgs.first.teacherName,
+                                    msgs.first.senderRole != null && msgs.first.senderRole!.trim().isNotEmpty
+                                        ? '${msgs.first.teacherName} (${msgs.first.senderRole})'
+                                        : msgs.first.teacherName,
                                     style: TextStyle(
                                       fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500, 
                                       fontSize: 16,

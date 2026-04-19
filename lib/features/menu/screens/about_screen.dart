@@ -16,7 +16,7 @@ class AboutScreen extends ConsumerWidget {
       backgroundColor: ThemeColors.backgroundColor,
       appBar: AppBar(
         backgroundColor: ThemeColors.primaryPurple,
-        title: const Text('About Us', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('About US', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),

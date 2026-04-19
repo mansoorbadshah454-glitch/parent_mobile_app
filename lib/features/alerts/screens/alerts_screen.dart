@@ -18,37 +18,64 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
   bool _isSelectionMode = false;
 
   Widget _buildAlertIcon(alert) {
-    if (alert.read) {
-      return CircleAvatar(
-        backgroundColor: Colors.grey[200],
-        child: const Icon(Icons.notifications, color: Colors.grey),
-      );
-    }
-
     IconData iconData;
     Color color;
 
-    switch (alert.type) {
+    switch (alert.type?.toLowerCase()) {
       case 'attendance':
-        bool isPresent = alert.status?.toLowerCase() == 'present' || alert.status?.toLowerCase() == 'p';
+        bool isPresent;
+        if (alert.status != null) {
+          isPresent = alert.status!.toLowerCase() == 'present' || alert.status!.toLowerCase() == 'p';
+        } else {
+          isPresent = alert.message.toLowerCase().contains('present');
+        }
         iconData = isPresent ? Icons.check_circle_outline : Icons.cancel_outlined;
         color = isPresent ? Colors.green : Colors.redAccent;
         break;
       case 'behavior':
-        iconData = Icons.psychology_rounded;
-        color = Colors.indigoAccent;
-        break;
       case 'health':
-        iconData = Icons.health_and_safety_rounded;
-        color = Colors.pinkAccent;
-        break;
       case 'hygiene':
-        iconData = Icons.clean_hands_rounded;
-        color = Colors.cyan.shade600;
-        break;
       case 'personality':
-        iconData = Icons.volunteer_activism_rounded;
-        color = Colors.teal.shade500; // Distinct thick teal for personality
+        final t = alert.type?.toLowerCase();
+        if (t == 'behavior') {
+          iconData = Icons.psychology_rounded;
+        } else if (t == 'health') {
+          iconData = Icons.health_and_safety_rounded;
+        } else if (t == 'hygiene') {
+          iconData = Icons.clean_hands_rounded;
+        } else {
+          iconData = Icons.volunteer_activism_rounded;
+        }
+        
+        // Default specific colors
+        Color specificColor = t == 'behavior' ? Colors.indigoAccent
+            : t == 'health' ? Colors.pinkAccent
+            : t == 'hygiene' ? Colors.cyan.shade600
+            : Colors.teal.shade500;
+
+        // Apply green/red wellness logic if a score/status allows derivation
+        if (alert.status != null) {
+           final stat = alert.status!.toLowerCase();
+           final double? score = double.tryParse(stat);
+           // Score > 1.0 is considered good (green), 1.0 or below is needs improvement (red).
+           // Also checking string keywords.
+           if (stat == 'excellent' || stat == 'good' || stat == 'satisfactory' || (score != null && score > 1.0)) {
+             color = Colors.green;
+           } else if (stat == 'needs improvement' || stat == 'poor' || (score != null && score <= 1.0)) {
+             color = Colors.redAccent;
+           } else {
+             color = specificColor;
+           }
+        } else {
+           // Fallback to message check if score is embedded in the message
+           if (alert.message.toLowerCase().contains('needs improvement') || alert.message.toLowerCase().contains('poor')) {
+             color = Colors.redAccent;
+           } else if (alert.message.toLowerCase().contains('excellent') || alert.message.toLowerCase().contains('good')) {
+             color = Colors.green;
+           } else {
+             color = specificColor;
+           }
+        }
         break;
       case 'academic':
       case 'performance':
@@ -67,8 +94,8 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     }
 
     return CircleAvatar(
-      backgroundColor: color.withValues(alpha: 0.15),
-      child: Icon(iconData, color: color),
+      backgroundColor: alert.read ? color.withValues(alpha: 0.05) : color.withValues(alpha: 0.15),
+      child: Icon(iconData, color: alert.read ? color.withValues(alpha: 0.5) : color),
     );
   }
 
