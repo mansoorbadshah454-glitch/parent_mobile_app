@@ -16,6 +16,11 @@ import '../../alerts/providers/alerts_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/glowing_school_background.dart';
 import '../../../services/push_notification_service.dart';
+import '../../menu/screens/school_timing_screen.dart';
+import '../../menu/screens/bank_details_screen.dart';
+import '../../menu/screens/help_support_screen.dart';
+import '../../menu/screens/about_screen.dart';
+import '../../menu/screens/settings_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -180,6 +185,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
           ),
+            ListTile(
+              leading: const Icon(Icons.access_time_filled, color: ThemeColors.primaryPurple),
+              title: const Text('School Timing', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SchoolTimingScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance, color: ThemeColors.primaryPurple),
+              title: const Text("Bank Details", style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_center, color: ThemeColors.primaryPurple),
+              title: const Text('Help & Support', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info, color: ThemeColors.primaryPurple),
+              title: const Text('About', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings, color: ThemeColors.primaryPurple),
+              title: const Text('Settings', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Divider(),
+            ),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.redAccent),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
