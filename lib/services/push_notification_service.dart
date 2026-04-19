@@ -32,6 +32,16 @@ class PushNotificationService {
         routeFromType(response.payload);
       },
     );
+
+    // Handle initialization from terminated state
+    final NotificationAppLaunchDetails? launchDetails = await _localNotificationsPlugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      if (launchDetails?.notificationResponse != null) {
+         Future.delayed(const Duration(milliseconds: 1000), () {
+           routeFromType(launchDetails!.notificationResponse!.payload);
+         });
+      }
+    }
   }
 
   Future<void> scheduleFeeReminders(KidData kid) async {
@@ -62,11 +72,15 @@ class PushNotificationService {
     if (type == null) return;
     int tabIndex = 0; // Default to news
     if (type == 'fee' || type == 'fee_update') {
-      tabIndex = 1; // Kids/Fee tab
+      tabIndex = 4; // Fee tab
     } else if (type == 'chat' || type == 'admin-message' || type == 'chat_message' || type == 'message') {
       tabIndex = 2; // Chat tab
     } else if (type == 'alert' || type == 'academic' || type == 'health' || type == 'wellness' || type == 'behavior' || type == 'hygiene' || type == 'personality' || type == 'performance' || type == 'celebration' || type == 'info') {
       tabIndex = 3; // Alerts tab
+    } else if (type == 'post' || type == 'news') {
+      tabIndex = 0; // News tab
+    } else if (type == 'kid' || type == 'kids') {
+      tabIndex = 1; // Kids tab
     }
     
     // Jump to the right tab using the provider
