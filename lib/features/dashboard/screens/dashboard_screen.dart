@@ -7,10 +7,10 @@ import '../../kids/screens/kids_screen.dart';
 import '../../news/screens/news_screen.dart';
 import '../../chat/screens/chat_screen.dart';
 import '../../alerts/screens/alerts_screen.dart';
+import '../../fees/screens/fees_dashboard_screen.dart';
 import '../widgets/animated_menu_button.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
-import 'placeholder_screen.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../alerts/providers/alerts_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -41,7 +41,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     const KidsScreen(),
     const ChatScreen(),
     const AlertsScreen(),
-    const PlaceholderScreen(title: 'Fees'),
+    const FeesDashboardScreen(),
   ];
 
   void _onMenuTap(int targetIndex) {
