@@ -97,7 +97,7 @@ class FeesDashboardScreen extends ConsumerWidget {
                                   children: [
                                     Text(
                                       kid.name,
-                                      style: GoogleFonts.montserrat(
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: ThemeColors.primaryText,
@@ -108,7 +108,7 @@ class FeesDashboardScreen extends ConsumerWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       'Roll: ${kid.rollNo}',
-                                      style: GoogleFonts.montserrat(
+                                      style: GoogleFonts.inter(
                                         fontSize: 12,
                                         color: Colors.grey[600],
                                         fontWeight: FontWeight.w500,
@@ -117,7 +117,7 @@ class FeesDashboardScreen extends ConsumerWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       'Class: ${kid.className}',
-                                      style: GoogleFonts.montserrat(
+                                      style: GoogleFonts.inter(
                                         fontSize: 12,
                                         color: Colors.grey[600],
                                         fontWeight: FontWeight.w500,
@@ -138,7 +138,7 @@ class FeesDashboardScreen extends ConsumerWidget {
                                     ),
                                     child: Text(
                                       dueBadgeText,
-                                      style: GoogleFonts.montserrat(
+                                      style: GoogleFonts.inter(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         color: dueBadgeColor,
@@ -173,7 +173,7 @@ class FeesDashboardScreen extends ConsumerWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.inter(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: color,
@@ -182,7 +182,7 @@ class FeesDashboardScreen extends ConsumerWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: Colors.grey[600],

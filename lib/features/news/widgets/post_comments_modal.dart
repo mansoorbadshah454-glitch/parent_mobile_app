@@ -23,11 +23,23 @@ class PostCommentsModal extends ConsumerStatefulWidget {
 
 class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
   final TextEditingController _commentController = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
   bool _isSubmitting = false;
   
   String? _replyingToCommentId;
   String? _replyingToName;
   final Map<String, bool> _showReplies = {};
+
+  bool _isEditing = false;
+  String? _editingCommentId;
+  String? _editingReplyParentId;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    _commentFocusNode.dispose();
+    super.dispose();
+  }
 
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
@@ -66,11 +78,11 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
 
       String dynamicRole = 'Parent';
       String dynamicAuthorName = parentData.name;
+      String? dynamicStudentContext;
 
       if (selectedKid != null) {
-        // "Ayesha Siddiqua's Parent"
         if (selectedKid.name.isNotEmpty) {
-            dynamicAuthorName = "${selectedKid.name}'s Parent";
+            dynamicStudentContext = "${selectedKid.name}'s Parent";
         }
         if (selectedKid.className.isNotEmpty && selectedKid.className.toLowerCase() != 'n/a') {
             dynamicRole = selectedKid.className;
@@ -81,6 +93,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
         'text': text,
         'authorId': user.uid,
         'authorName': dynamicAuthorName,
+        'studentContext': dynamicStudentContext,
         'authorImage': user.photoURL ?? "",
         'role': dynamicRole,
         'timestamp': FieldValue.serverTimestamp(),
@@ -93,7 +106,26 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
           .collection('posts')
           .doc(widget.postId);
 
-      if (_replyingToCommentId != null) {
+      if (_isEditing && _editingCommentId != null) {
+        if (_editingReplyParentId != null) {
+          await postRef
+            .collection('comments')
+            .doc(_editingReplyParentId)
+            .collection('replies')
+            .doc(_editingCommentId)
+            .update({'text': text});
+        } else {
+          await postRef
+            .collection('comments')
+            .doc(_editingCommentId)
+            .update({'text': text});
+        }
+        setState(() {
+          _isEditing = false;
+          _editingCommentId = null;
+          _editingReplyParentId = null;
+        });
+      } else if (_replyingToCommentId != null) {
         // Write to replies subcollection
         await postRef
             .collection('comments')
@@ -132,6 +164,86 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showCommentOptions(BuildContext context, String commentId, Map<String, dynamic> data, {String? parentCommentId}) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit, color: Colors.blue),
+                title: const Text('Edit Comment'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isEditing = true;
+                    _editingCommentId = commentId;
+                    _editingReplyParentId = parentCommentId;
+                    _commentController.text = data['text'] ?? '';
+                    _replyingToCommentId = null;
+                    _replyingToName = null;
+                  });
+                  _commentFocusNode.requestFocus();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Comment', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  bool confirm = await showDialog(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text("Delete Comment"),
+                      content: const Text("Are you sure you want to delete this comment?"),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel")),
+                        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  ) ?? false;
+
+                  if (confirm) {
+                    _deleteComment(commentId, parentCommentId: parentCommentId);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  Future<void> _deleteComment(String commentId, {String? parentCommentId}) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('schools')
+        .doc(widget.schoolId)
+        .collection('posts')
+        .doc(widget.postId);
+        
+    try {
+      if (parentCommentId != null) {
+        await postRef.collection('comments').doc(parentCommentId).collection('replies').doc(commentId).delete();
+        await postRef.collection('comments').doc(parentCommentId).update({
+          'replyCount': FieldValue.increment(-1)
+        });
+      } else {
+        await postRef.collection('comments').doc(commentId).delete();
+        await postRef.update({
+          'commentCount': FieldValue.increment(-1)
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error deleting comment: $e")));
+      }
     }
   }
 
@@ -183,15 +295,22 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
             
             return Padding(
                padding: const EdgeInsets.only(top: 6),
-               child: Row(
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 children: [
-                    CircleAvatar(
-                       radius: 12,
-                       backgroundColor: Colors.blueAccent,
-                       backgroundImage: data['authorImage'] != null && data['authorImage'].isNotEmpty ? NetworkImage(data['authorImage']) : null,
-                       child: (data['authorImage'] == null || data['authorImage'].isEmpty) ? const Icon(Icons.person, size: 14, color: Colors.white) : null,
-                    ),
+               child: GestureDetector(
+                 onLongPress: () {
+                   final user = ref.read(userProvider);
+                   if (user != null && data['authorId'] == user.uid) {
+                     _showCommentOptions(context, doc.id, data, parentCommentId: commentId);
+                   }
+                 },
+                 child: Row(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.blue.withOpacity(0.1),
+                        backgroundImage: data['authorImage'] != null && data['authorImage'].isNotEmpty ? NetworkImage(data['authorImage']) : null,
+                        child: (data['authorImage'] == null || data['authorImage'].isEmpty) ? Icon(Icons.school, size: 14, color: Colors.blue[600]) : null,
+                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -206,29 +325,35 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                              child: Column(
                                crossAxisAlignment: CrossAxisAlignment.start,
                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                          child: Text(data['authorName'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      if (data['role'] != null)
-                                        Flexible(
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              data['role'],
-                                              style: const TextStyle(fontSize: 9, color: Colors.blue, fontWeight: FontWeight.bold),
-                                              overflow: TextOverflow.ellipsis,
+                                  Text(data['authorName'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
+                                  if (data['studentContext'] != null || data['role'] != null) ...[
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        if (data['studentContext'] != null) ...[
+                                          Flexible(
+                                            child: Text(data['studentContext'], style: TextStyle(fontSize: 10, color: Colors.grey[700]), overflow: TextOverflow.ellipsis),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
+                                        if (data['role'] != null)
+                                          Flexible(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                data['role'],
+                                                style: const TextStyle(fontSize: 9, color: Colors.blue, fontWeight: FontWeight.bold),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                  ],
                                   const SizedBox(height: 2),
                                   Text(data['text'] ?? '', style: const TextStyle(fontSize: 13)),
                                ]
@@ -241,7 +366,8 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                         ]
                       )
                     )
-                 ]
+                   ]
+                 ),
                )
             );
           }).toList(),
@@ -330,17 +456,23 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                     
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      child: GestureDetector(
+                        onLongPress: () {
+                          if (user != null && data['authorId'] == user.uid) {
+                            _showCommentOptions(context, comments[index].id, data);
+                          }
+                        },
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           CircleAvatar(
                             radius: 18,
-                            backgroundColor: Colors.blueAccent,
+                            backgroundColor: Colors.blue.withOpacity(0.1),
                             backgroundImage: data['authorImage'] != null && data['authorImage'].isNotEmpty
                                 ? NetworkImage(data['authorImage'])
                                 : null,
                             child: (data['authorImage'] == null || data['authorImage'].isEmpty)
-                                ? const Icon(Icons.person, color: Colors.white, size: 20)
+                                ? Icon(Icons.school, color: Colors.blue[600], size: 20)
                                 : null,
                           ),
                           const SizedBox(width: 8),
@@ -357,33 +489,39 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                              child: Text(
-                                                data['authorName'] ?? 'Unknown',
-                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                                  overflow: TextOverflow.ellipsis
-                                              ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          if (data['role'] != null)
-                                            Flexible(
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  data['role'],
-                                                  style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
+                                      Text(
+                                        data['authorName'] ?? 'Unknown',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        overflow: TextOverflow.ellipsis
                                       ),
+                                      if (data['studentContext'] != null || data['role'] != null) ...[
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            if (data['studentContext'] != null) ...[
+                                              Flexible(
+                                                child: Text(data['studentContext'], style: TextStyle(fontSize: 11, color: Colors.grey[700]), overflow: TextOverflow.ellipsis),
+                                              ),
+                                              const SizedBox(width: 6),
+                                            ],
+                                            if (data['role'] != null)
+                                              Flexible(
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: Text(
+                                                    data['role'],
+                                                    style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
                                       const SizedBox(height: 4),
                                       Text(
                                         data['text'] ?? '',
@@ -438,6 +576,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                           ),
                         ],
                       ),
+                      ),
                     );
                   },
                 );
@@ -452,20 +591,25 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_replyingToName != null)
+                if (_replyingToName != null || _isEditing)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     color: Colors.grey.withOpacity(0.1),
                     child: Row(
                       children: [
-                        Text("Replying to ", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        Text("$_replyingToName", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(_isEditing ? "Editing comment " : "Replying to ", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                        if (!_isEditing)
+                          Text("$_replyingToName", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         const Spacer(),
                         GestureDetector(
                           onTap: () => setState(() {
                             _replyingToCommentId = null;
                             _replyingToName = null;
+                            _isEditing = false;
+                            _editingCommentId = null;
+                            _editingReplyParentId = null;
+                            _commentController.clear();
                           }),
                           child: const Icon(Icons.close, size: 16, color: Colors.grey),
                         )
@@ -483,6 +627,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                       Expanded(
                         child: TextField(
                           controller: _commentController,
+                          focusNode: _commentFocusNode,
                           style: const TextStyle(fontSize: 14),
                           decoration: InputDecoration(
                             hintText: "Write a comment...",

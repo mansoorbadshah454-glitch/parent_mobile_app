@@ -74,7 +74,7 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
             children: [
               Text(
                 'Payment Reliability',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: ThemeColors.primaryText,
@@ -88,7 +88,7 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
                 ),
                 child: Text(
                   badgeText,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: badgeColor,
@@ -129,7 +129,7 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
                           children: [
                             Text(
                               '${value.toInt()}%',
-                              style: GoogleFonts.montserrat(
+                              style: GoogleFonts.inter(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: ThemeColors.primaryPurple,
@@ -190,7 +190,7 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
           const SizedBox(height: 12),
           Text(
             'Based on past 6 months of fee payments.',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.inter(
               fontSize: 12,
               color: Colors.grey,
               fontStyle: FontStyle.italic,

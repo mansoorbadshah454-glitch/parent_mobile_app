@@ -67,7 +67,7 @@ class YearlyFeeCalendar extends StatelessWidget {
         children: [
           Text(
             'Fee Calendar 2026',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: ThemeColors.primaryText,
@@ -156,7 +156,7 @@ class YearlyFeeCalendar extends StatelessWidget {
               children: [
                 Text(
                   month.monthName,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: textColor == Colors.white ? Colors.white : ThemeColors.primaryText,

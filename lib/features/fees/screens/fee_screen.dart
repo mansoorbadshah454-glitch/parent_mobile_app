@@ -44,7 +44,7 @@ class FeeScreen extends ConsumerWidget {
         appBar: AppBar(
           backgroundColor: ThemeColors.primaryPurple,
           elevation: 0,
-          title: Text('${currentKid.name}\'s Fees', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+          title: Text('${currentKid.name}\'s Fees', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
             onPressed: () => Navigator.pop(context),
@@ -76,8 +76,8 @@ class FeeScreen extends ConsumerWidget {
                   ),
                   labelColor: ThemeColors.primaryPurple,
                   unselectedLabelColor: Colors.white70,
-                  labelStyle: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 13),
-                  unselectedLabelStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 13),
+                  labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
                   splashBorderRadius: BorderRadius.circular(24.0),
                   tabs: const [
                     Tab(text: "Overview"),
@@ -121,7 +121,7 @@ class FeeScreen extends ConsumerWidget {
                               Expanded(
                                 child: Text(
                                   badgeMessage,
-                                  style: GoogleFonts.montserrat(
+                                  style: GoogleFonts.inter(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                     color: badgeColor,
@@ -169,7 +169,7 @@ class FeeScreen extends ConsumerWidget {
                               Expanded(
                                 child: Text(
                                   calendarInfoMessage,
-                                  style: GoogleFonts.montserrat(
+                                  style: GoogleFonts.inter(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                     color: ThemeColors.primaryPurple,
@@ -197,7 +197,7 @@ class FeeScreen extends ConsumerWidget {
                     icon: const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
                     label: Text(
                       'Pay Now',
-                      style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ThemeColors.primaryPurple.withOpacity(0.5), // Dimmed to indicate locked
@@ -209,7 +209,7 @@ class FeeScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     'Coming Soon',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey,
