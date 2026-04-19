@@ -211,7 +211,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.info, color: ThemeColors.primaryPurple),
-              title: const Text('About', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              title: const Text('About Us', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
