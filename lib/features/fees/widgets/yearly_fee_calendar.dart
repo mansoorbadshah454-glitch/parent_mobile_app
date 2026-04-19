@@ -75,33 +75,7 @@ class YearlyFeeCalendar extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 20),
-          // Info Badge Placement
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: ThemeColors.primaryPurple.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ThemeColors.primaryPurple.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, color: ThemeColors.primaryPurple),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Important information goes here.',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: ThemeColors.primaryPurple,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 10),
         ],
       ),
     );

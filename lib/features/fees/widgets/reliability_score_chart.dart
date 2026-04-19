@@ -48,6 +48,10 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
 
   @override
   Widget build(BuildContext context) {
+    double targetScore = FeeCalculatorService.calculateAggregateScore(widget.paymentHistoryDays);
+    Color badgeColor = FeeCalculatorService.getReliabilityColor(targetScore);
+    String badgeText = FeeCalculatorService.getReliabilityLabel(targetScore);
+
     return Container(
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -79,15 +83,15 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: badgeColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Excellent',
+                  badgeText,
                   style: GoogleFonts.montserrat(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: badgeColor,
                   ),
                 ),
               ),
