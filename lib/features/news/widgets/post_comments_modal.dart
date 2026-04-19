@@ -34,6 +34,38 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
   String? _editingCommentId;
   String? _editingReplyParentId;
 
+  late final Stream<QuerySnapshot> _commentsStream;
+  final Map<String, Stream<QuerySnapshot>> _replyStreams = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _commentsStream = FirebaseFirestore.instance
+        .collection('schools')
+        .doc(widget.schoolId)
+        .collection('posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> _getReplyStream(String commentId) {
+    if (!_replyStreams.containsKey(commentId)) {
+      _replyStreams[commentId] = FirebaseFirestore.instance
+          .collection('schools')
+          .doc(widget.schoolId)
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .orderBy('timestamp', descending: false)
+          .snapshots();
+    }
+    return _replyStreams[commentId]!;
+  }
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -273,16 +305,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
 
   Widget _buildRepliesList(String commentId) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('schools')
-          .doc(widget.schoolId)
-          .collection('posts')
-          .doc(widget.postId)
-          .collection('comments')
-          .doc(commentId)
-          .collection('replies')
-          .orderBy('timestamp', descending: false)
-          .snapshots(),
+      stream: _getReplyStream(commentId),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Padding(padding: EdgeInsets.only(top: 8), child: SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)));
         final replies = snapshot.data!.docs;
@@ -380,14 +403,6 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
 
-    final commentsQuery = FirebaseFirestore.instance
-        .collection('schools')
-        .doc(widget.schoolId)
-        .collection('posts')
-        .doc(widget.postId)
-        .collection('comments')
-        .orderBy('timestamp', descending: true);
-
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -422,7 +437,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
           // Comments List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: commentsQuery.snapshots(),
+              stream: _commentsStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -640,22 +655,25 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                               borderSide: BorderSide.none,
                             ),
                           ),
-                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: (_commentController.text.trim().isNotEmpty && !_isSubmitting)
-                            ? _submitComment
-                            : null,
-                        icon: _isSubmitting 
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Icon(
-                                Icons.send,
-                                color: _commentController.text.trim().isNotEmpty 
-                                    ? Colors.blue 
-                                    : Colors.grey,
-                              ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _commentController,
+                        builder: (context, value, child) {
+                          final hasText = value.text.trim().isNotEmpty;
+                          return IconButton(
+                            onPressed: (hasText && !_isSubmitting)
+                                ? _submitComment
+                                : null,
+                            icon: _isSubmitting 
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                : Icon(
+                                    Icons.send,
+                                    color: hasText ? Colors.blue : Colors.grey,
+                                  ),
+                          );
+                        },
                       ),
                     ],
                   ),
