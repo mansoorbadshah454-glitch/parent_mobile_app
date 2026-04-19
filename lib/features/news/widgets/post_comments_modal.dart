@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class PostCommentsModal extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/parent_data_provider.dart';
+import '../../kids/providers/kids_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+
+class PostCommentsModal extends ConsumerStatefulWidget {
   final String schoolId;
   final String postId;
 
@@ -13,157 +18,506 @@ class PostCommentsModal extends StatelessWidget {
   });
 
   @override
+  ConsumerState<PostCommentsModal> createState() => _PostCommentsModalState();
+}
+
+class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
+  final TextEditingController _commentController = TextEditingController();
+  bool _isSubmitting = false;
+  
+  String? _replyingToCommentId;
+  String? _replyingToName;
+  final Map<String, bool> _showReplies = {};
+
+  Future<void> _submitComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final user = ref.read(userProvider);
+      final parentDataAsync = ref.read(parentDataProvider);
+      final kidsAsync = ref.read(kidsProvider);
+
+      if (user == null || parentDataAsync.value == null) throw Exception("User not logged in");
+
+      final parentData = parentDataAsync.value!;
+      final kidsList = kidsAsync.value ?? [];
+
+      KidData? selectedKid;
+      if (kidsList.isNotEmpty) {
+        selectedKid = kidsList.reduce((curr, next) {
+          int getLevel(String className) {
+            String lower = className.toLowerCase();
+            if (lower.contains('play') || lower.contains('pg')) return 0;
+            if (lower.contains('pre') || lower.contains('pn')) return 1;
+            if (lower.contains('nursery') || lower.contains('nur')) return 2;
+            if (lower.contains('kg') || lower.contains('prep')) return 3;
+            final match = RegExp(r'\d+').firstMatch(lower);
+            if (match != null) {
+              return int.parse(match.group(0)!) + 10;
+            }
+            return 99; 
+          }
+          return getLevel(curr.className) <= getLevel(next.className) ? curr : next;
+        });
+      }
+
+      String dynamicRole = 'Parent';
+      String dynamicAuthorName = parentData.name;
+
+      if (selectedKid != null) {
+        // "Ayesha Siddiqua's Parent"
+        if (selectedKid.name.isNotEmpty) {
+            dynamicAuthorName = "${selectedKid.name}'s Parent";
+        }
+        if (selectedKid.className.isNotEmpty && selectedKid.className.toLowerCase() != 'n/a') {
+            dynamicRole = selectedKid.className;
+        }
+      }
+
+      final commentData = {
+        'text': text,
+        'authorId': user.uid,
+        'authorName': dynamicAuthorName,
+        'authorImage': user.photoURL ?? "",
+        'role': dynamicRole,
+        'timestamp': FieldValue.serverTimestamp(),
+        'likes': [],
+      };
+
+      final postRef = FirebaseFirestore.instance
+          .collection('schools')
+          .doc(widget.schoolId)
+          .collection('posts')
+          .doc(widget.postId);
+
+      if (_replyingToCommentId != null) {
+        // Write to replies subcollection
+        await postRef
+            .collection('comments')
+            .doc(_replyingToCommentId)
+            .collection('replies')
+            .add(commentData);
+            
+        // Increment reply count on parent comment
+        await postRef.collection('comments').doc(_replyingToCommentId).update({
+          'replyCount': FieldValue.increment(1)
+        });
+        
+        setState(() {
+          // Auto-expand replies to see what you just posted
+          _showReplies[_replyingToCommentId!] = true;
+          _replyingToCommentId = null;
+          _replyingToName = null;
+        });
+      } else {
+        // Write top-level comment
+        await postRef.collection('comments').add(commentData);
+        // Increment comment count on the post
+        await postRef.update({
+          'commentCount': FieldValue.increment(1)
+        });
+      }
+
+      _commentController.clear();
+      // Dismiss keyboard
+      FocusScope.of(context).unfocus();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error posting comment: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _toggleCommentLike(String commentId, List<String> currentLikes) async {
+    final user = ref.read(userProvider);
+    if (user == null) return;
+    
+    final isLiked = currentLikes.contains(user.uid);
+    final commentRef = FirebaseFirestore.instance
+        .collection('schools')
+        .doc(widget.schoolId)
+        .collection('posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .doc(commentId);
+        
+    try {
+      if (isLiked) {
+        await commentRef.update({'likes': FieldValue.arrayRemove([user.uid])});
+      } else {
+        await commentRef.update({'likes': FieldValue.arrayUnion([user.uid])});
+      }
+    } catch (e) {
+      print("Error liking comment: $e");
+    }
+  }
+
+  Widget _buildRepliesList(String commentId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('schools')
+          .doc(widget.schoolId)
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .orderBy('timestamp', descending: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Padding(padding: EdgeInsets.only(top: 8), child: SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)));
+        final replies = snapshot.data!.docs;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: replies.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final time = data['timestamp'] as Timestamp?;
+            final tString = time != null ? timeago.format(time.toDate()) : 'Now';
+            
+            return Padding(
+               padding: const EdgeInsets.only(top: 6),
+               child: Row(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                    CircleAvatar(
+                       radius: 12,
+                       backgroundColor: Colors.blueAccent,
+                       backgroundImage: data['authorImage'] != null && data['authorImage'].isNotEmpty ? NetworkImage(data['authorImage']) : null,
+                       child: (data['authorImage'] == null || data['authorImage'].isEmpty) ? const Icon(Icons.person, size: 14, color: Colors.white) : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                             decoration: BoxDecoration(
+                               color: Colors.grey.withOpacity(0.1),
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                          child: Text(data['authorName'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      if (data['role'] != null)
+                                        Flexible(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              data['role'],
+                                              style: const TextStyle(fontSize: 9, color: Colors.blue, fontWeight: FontWeight.bold),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(data['text'] ?? '', style: const TextStyle(fontSize: 13)),
+                               ]
+                             )
+                           ),
+                           Padding(
+                             padding: const EdgeInsets.only(left: 4, top: 4),
+                             child: Text(tString, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                           )
+                        ]
+                      )
+                    )
+                 ]
+               )
+            );
+          }).toList(),
+        );
+      }
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = ref.watch(userProvider);
+
+    final commentsQuery = FirebaseFirestore.instance
+        .collection('schools')
+        .doc(widget.schoolId)
+        .collection('posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .orderBy('timestamp', descending: true);
+
     return Container(
-      padding: const EdgeInsets.only(top: 16),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Comments',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ],
             ),
           ),
+          const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const Divider(),
+
           // Comments List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('schools')
-                  .doc(schoolId)
-                  .collection('posts')
-                  .doc(postId)
-                  .collection('comments')
-                  .orderBy('timestamp', descending: false) // oldest first usually for comments, but we can stick to desc. Let's do desc since appending. Wait, Facebook usually shows top comments but desc is easiest. FB does asc if at bottom. Let's do desc for newest first at the top of scroll.
-                  .snapshots(),
+              stream: commentsQuery.snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                final comments = snapshot.data?.docs ?? [];
-                if (comments.isEmpty) {
-                  return const Center(child: Text('No comments yet.'));
+                  return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.red)));
                 }
 
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                final comments = snapshot.data?.docs ?? [];
+
+                if (comments.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No comments yet. Be the first to comment!",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: comments.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final data = comments[index].data() as Map<String, dynamic>;
-                    final authorName = data['authorName'] ?? 'User';
-                    final text = data['text'] ?? '';
-                    final timestamp = data['timestamp'] != null
-                        ? (data['timestamp'] as Timestamp).toDate()
-                        : null;
-                    final authorImage = data['authorImage'] ?? '';
-
-                    final role = data['role'] ?? 'Staff';
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: authorImage.isNotEmpty ? NetworkImage(authorImage) : null,
-                          child: authorImage.isEmpty ? const Icon(Icons.person, size: 20, color: Colors.grey) : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          authorName,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(4),
+                    final timestamp = data['timestamp'] as Timestamp?;
+                    final timeString = timestamp != null ? timeago.format(timestamp.toDate()) : 'Just now';
+                    
+                    final likesList = List<String>.from(data['likes'] ?? []);
+                    final isLiked = user != null && likesList.contains(user.uid);
+                    final replyCount = data['replyCount'] ?? 0;
+                    
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.blueAccent,
+                            backgroundImage: data['authorImage'] != null && data['authorImage'].isNotEmpty
+                                ? NetworkImage(data['authorImage'])
+                                : null,
+                            child: (data['authorImage'] == null || data['authorImage'].isEmpty)
+                                ? const Icon(Icons.person, color: Colors.white, size: 20)
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                              child: Text(
+                                                data['authorName'] ?? 'Unknown',
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                  overflow: TextOverflow.ellipsis
+                                              ),
                                           ),
-                                          child: Text(
-                                            role,
-                                            style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(text, style: const TextStyle(fontSize: 14)),
-                                  ],
-                                ),
-                              ),
-                              if (timestamp != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 8, top: 4),
-                                  child: Text(
-                                    timeago.format(timestamp),
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 11, fontWeight: FontWeight.bold),
+                                          const SizedBox(width: 6),
+                                          if (data['role'] != null)
+                                            Flexible(
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  data['role'],
+                                                  style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        data['text'] ?? '',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                            ],
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 12, top: 4),
+                                  child: Row(
+                                    children: [
+                                      Text(timeString, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      const SizedBox(width: 16),
+                                      GestureDetector(
+                                        onTap: () => _toggleCommentLike(comments[index].id, likesList),
+                                        child: Text("Like", style: TextStyle(
+                                            color: isLiked ? Colors.blue : Colors.grey[600], 
+                                            fontWeight: isLiked ? FontWeight.bold : FontWeight.w600,
+                                            fontSize: 12
+                                        )),
+                                      ),
+                                      if (likesList.isNotEmpty) ...[
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.thumb_up, size: 12, color: Colors.blue),
+                                        const SizedBox(width: 2),
+                                        Text("${likesList.length}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                      ],
+                                    ]
+                                  ),
+                                ),
+                                if (replyCount > 0)
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _showReplies[comments[index].id] = !(_showReplies[comments[index].id] ?? false);
+                                      });
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 8, left: 12),
+                                      child: Text(
+                                        (_showReplies[comments[index].id] ?? false) ? "Hide replies" : "View $replyCount replies",
+                                        style: const TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                
+                                if (_showReplies[comments[index].id] ?? false)
+                                   _buildRepliesList(comments[index].id),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     );
                   },
                 );
               },
             ),
           ),
-          // Footer Message
+
+          // Comment Input
           SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.grey[50],
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.grey, size: 16),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'As a parent, you can view comments but commenting is reserved for school staff.',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+            bottom: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_replyingToName != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: Colors.grey.withOpacity(0.1),
+                    child: Row(
+                      children: [
+                        Text("Replying to ", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                        Text("$_replyingToName", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => setState(() {
+                            _replyingToCommentId = null;
+                            _replyingToName = null;
+                          }),
+                          child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                        )
+                      ],
                     ),
                   ),
-                ],
-              ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentController,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: InputDecoration(
+                            hintText: "Write a comment...",
+                            hintStyle: TextStyle(color: Colors.grey.withOpacity(0.6)),
+                            filled: true,
+                            fillColor: Colors.grey.withOpacity(0.1),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: (_commentController.text.trim().isNotEmpty && !_isSubmitting)
+                            ? _submitComment
+                            : null,
+                        icon: _isSubmitting 
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Icon(
+                                Icons.send,
+                                color: _commentController.text.trim().isNotEmpty 
+                                    ? Colors.blue 
+                                    : Colors.grey,
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          )
+          ),
         ],
       ),
     );

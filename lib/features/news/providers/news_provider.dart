@@ -18,6 +18,8 @@ class NewsPost {
   final DateTime? timestamp;
   final List<String> likes;
   final int commentCount;
+  final int backgroundIndex;
+  final Map<String, dynamic> reactions;
 
   NewsPost({
     required this.id,
@@ -33,6 +35,8 @@ class NewsPost {
     this.timestamp,
     required this.likes,
     required this.commentCount,
+    this.backgroundIndex = 0,
+    required this.reactions,
   });
 
   factory NewsPost.fromMap(Map<String, dynamic> map, String id) {
@@ -59,7 +63,25 @@ class NewsPost {
           : null,
       likes: List<String>.from(map['likes'] ?? []),
       commentCount: map['commentCount'] ?? 0,
+      backgroundIndex: map['backgroundIndex'] ?? 0,
+      reactions: map['reactions'] as Map<String, dynamic>? ?? {},
     );
+  }
+}
+
+Future<void> toggleReaction(String schoolId, String postId, String userId, String reactionType) async {
+  final postRef = FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId);
+  
+  if (reactionType == 'none') {
+    await postRef.update({
+      'reactions.$userId': FieldValue.delete()
+    });
+  } else {
+    // Also remove from legacy likes array to prevent duplication issues
+    await postRef.update({
+      'reactions.$userId': reactionType,
+      'likes': FieldValue.arrayRemove([userId])
+    });
   }
 }
 

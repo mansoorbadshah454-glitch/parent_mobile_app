@@ -96,17 +96,18 @@ class AboutScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              Text(
-                                hasAboutText 
-                                  ? aboutText 
-                                  : "This section will be updated soon with detailed information about our core values, mission, and history.",
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  height: 1.5,
-                                  color: ThemeColors.secondaryText,
+                                Text(
+                                  hasAboutText 
+                                    ? aboutText 
+                                    : "This section will be updated soon with detailed information about our core values, mission, and history.",
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    height: 1.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: ThemeColors.secondaryText,
+                                  ),
                                 ),
-                              ),
                               const SizedBox(height: 32),
                               const Text(
                                 "App Version 1.0.0",
