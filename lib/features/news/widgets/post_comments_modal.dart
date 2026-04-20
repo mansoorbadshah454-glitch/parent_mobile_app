@@ -5,6 +5,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/parent_data_provider.dart';
 import '../../kids/providers/kids_provider.dart';
+import 'likers_dialog.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class PostCommentsModal extends ConsumerStatefulWidget {
@@ -564,6 +565,17 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                                         const Icon(Icons.thumb_up, size: 12, color: Colors.blue),
                                         const SizedBox(width: 2),
                                         Text("${likesList.length}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+
+                                        const SizedBox(width: 16),
+                                        GestureDetector(
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (_) => LikersDialog(uids: likesList, schoolId: widget.schoolId),
+                                            );
+                                          },
+                                          child: Text("View", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600, fontSize: 12)),
+                                        ),
                                       ],
                                     ]
                                   ),

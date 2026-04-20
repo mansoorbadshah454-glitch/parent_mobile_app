@@ -9,6 +9,7 @@ import '../../../core/providers/parent_data_provider.dart';
 import 'post_comments_modal.dart';
 import '../../../core/widgets/video_player_widget.dart';
 import 'full_screen_media_viewer.dart';
+import 'likers_dialog.dart';
 
 // Copy the ReactionPopup exactly from teacher app
 class _ReactionPopup extends StatefulWidget {
@@ -251,7 +252,7 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
                           Expanded(
                             child: Text(
                               post.authorName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87, letterSpacing: -0.1),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -430,20 +431,33 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (combinedLikeCount > 0)
-                    Row(
-                      children: [
-                        if (hasHearts) const Text('❤️', style: TextStyle(fontSize: 12, color: Colors.red)),
-                        if (hasHahas) const Text('😂', style: TextStyle(fontSize: 12)),
-                        if (hasWows) const Text('😮', style: TextStyle(fontSize: 12)),
-                        if (!hasHearts && !hasHahas && !hasWows)
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                            child: const Icon(Icons.thumb_up, size: 10, color: Colors.white),
-                          ),
-                        const SizedBox(width: 6),
-                        Text('$combinedLikeCount', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                      ],
+                    GestureDetector(
+                      onTap: () {
+                         final allLikers = totalReactors.toList();
+                         if (allLikers.isNotEmpty && parentData != null) {
+                            showDialog(
+                               context: context,
+                               builder: (_) => LikersDialog(uids: allLikers, schoolId: parentData.schoolId)
+                            );
+                         }
+                      },
+                      child: Row(
+                        children: [
+                          if (hasHearts) const Text('❤️', style: TextStyle(fontSize: 12, color: Colors.red)),
+                          if (hasHahas) const Text('😂', style: TextStyle(fontSize: 12)),
+                          if (hasWows) const Text('😮', style: TextStyle(fontSize: 12)),
+                          if (!hasHearts && !hasHahas && !hasWows)
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                              child: const Icon(Icons.thumb_up, size: 10, color: Colors.white),
+                            ),
+                          const SizedBox(width: 6),
+                          Text('$combinedLikeCount', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                          const SizedBox(width: 8),
+                          Text("View", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600, fontSize: 12)),
+                        ],
+                      ),
                     )
                   else
                     const SizedBox.shrink(),
