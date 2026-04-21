@@ -13,6 +13,8 @@ class KidData {
   final Map<String, String> attendanceHistory;
   final String monthlyFeeStatus;
   final String? monthlyFeeDate;
+  final String? resultUrl;
+  final String? resultFileName;
 
   KidData({
     required this.id,
@@ -25,6 +27,8 @@ class KidData {
     required this.attendanceHistory,
     required this.monthlyFeeStatus,
     this.monthlyFeeDate,
+    this.resultUrl,
+    this.resultFileName,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -43,6 +47,8 @@ class KidData {
       attendanceHistory: _parseAttendanceSafe(map['attendanceHistory']),
       monthlyFeeStatus: map['monthlyFeeStatus']?.toString() ?? 'unpaid',
       monthlyFeeDate: map['monthlyFeeDate']?.toString(),
+      resultUrl: map['uploadedResultUrl']?.toString() ?? map['resultCardUrl']?.toString(),
+      resultFileName: map['resultCardName']?.toString() ?? (map['uploadedResultType'] != null ? 'result.${map['uploadedResultType']}' : null),
     );
   }
 
