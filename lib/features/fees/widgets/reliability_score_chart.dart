@@ -3,11 +3,13 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/theme_colors.dart';
 import '../services/fee_calculator_service.dart';
+import '../../../../core/utils/translation_helper.dart';
 
 class ReliabilityScoreChart extends StatefulWidget {
-  final List<int> paymentHistoryDays; // Replaced static score with historic days array
+  final List<int> paymentHistoryDays;
+  final String lang;
 
-  const ReliabilityScoreChart({super.key, required this.paymentHistoryDays});
+  const ReliabilityScoreChart({super.key, required this.paymentHistoryDays, required this.lang});
 
   @override
   State<ReliabilityScoreChart> createState() => _ReliabilityScoreChartState();
@@ -73,12 +75,18 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Payment Reliability',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: ThemeColors.primaryText,
-                ),
+                TranslationHelper.translate('Payment Reliability', widget.lang),
+                style: widget.lang == 'en'
+                  ? GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeColors.primaryText,
+                    )
+                  : TranslationHelper.getTextStyle(
+                      widget.lang,
+                      fontSize: 16,
+                      color: ThemeColors.primaryText,
+                    ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -87,12 +95,18 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  badgeText,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: badgeColor,
-                  ),
+                  TranslationHelper.translate(badgeText, widget.lang),
+                  style: widget.lang == 'en'
+                    ? GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                      )
+                    : TranslationHelper.getTextStyle(
+                        widget.lang,
+                        fontSize: 12,
+                        color: badgeColor,
+                      ),
                 ),
               ),
             ],
@@ -189,12 +203,18 @@ class _ReliabilityScoreChartState extends State<ReliabilityScoreChart> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Based on past 6 months of fee payments.',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.grey,
-              fontStyle: FontStyle.italic,
-            ),
+            TranslationHelper.translate('Based on past 6 months of fee payments.', widget.lang),
+            style: widget.lang == 'en'
+              ? GoogleFonts.inter(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                )
+              : TranslationHelper.getTextStyle(
+                  widget.lang,
+                  fontSize: 12,
+                  color: Colors.grey,
+                ), // Disabled italic for Nastaliq
           ),
         ],
       ),

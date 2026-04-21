@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import '../providers/kids_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
-class PersonalityTabContent extends StatefulWidget {
+class PersonalityTabContent extends ConsumerStatefulWidget {
   final KidData kid;
   
   const PersonalityTabContent({Key? key, required this.kid}) : super(key: key);
 
   @override
-  State<PersonalityTabContent> createState() => _PersonalityTabContentState();
+  ConsumerState<PersonalityTabContent> createState() => _PersonalityTabContentState();
 }
 
-class _PersonalityTabContentState extends State<PersonalityTabContent> {
+class _PersonalityTabContentState extends ConsumerState<PersonalityTabContent> {
   bool _startAnimation = false;
 
   @override
@@ -83,41 +86,44 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
     final averageScore = (healthScore + behaviorScore + hygieneScore) / 3.0;
 
     final badgeData = _getPersonalityData(averageScore);
+    final lang = ref.watch(languageProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Character & Well-being",
-            style: TextStyle(
+          Text(
+            TranslationHelper.translate("Character & Well-being", lang),
+            style: TranslationHelper.getTextStyle(
+              lang,
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: ThemeColors.primaryText,
-            ),
+            ).copyWith(height: 1.2),
           ),
           const SizedBox(height: 16),
-          _buildTraitsCard(healthScore, behaviorScore, hygieneScore),
+          _buildTraitsCard(healthScore, behaviorScore, hygieneScore, lang),
           const SizedBox(height: 32),
 
-          const Text(
-            "Overall Insight",
-            style: TextStyle(
+          Text(
+            TranslationHelper.translate("Overall Insight", lang),
+            style: TranslationHelper.getTextStyle(
+              lang,
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: ThemeColors.primaryText,
-            ),
+            ).copyWith(height: 1.2),
           ),
           const SizedBox(height: 16),
-          _buildInfoBadge(badgeData),
+          _buildInfoBadge(badgeData, lang),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildTraitsCard(double healthScore, double behaviorScore, double hygieneScore) {
+  Widget _buildTraitsCard(double healthScore, double behaviorScore, double hygieneScore, String lang) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -133,17 +139,17 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
       ),
       child: Column(
         children: [
-          _buildHorizontalBar("Health", healthScore, Icons.favorite_rounded, Colors.pink.shade400),
+          _buildHorizontalBar("Health", healthScore, Icons.favorite_rounded, Colors.pink.shade400, lang),
           const SizedBox(height: 24),
-          _buildHorizontalBar("Behavior", behaviorScore, Icons.psychology_rounded, Colors.purple.shade400),
+          _buildHorizontalBar("Behavior", behaviorScore, Icons.psychology_rounded, Colors.purple.shade400, lang),
           const SizedBox(height: 24),
-          _buildHorizontalBar("Hygiene", hygieneScore, Icons.clean_hands_rounded, Colors.lightBlue.shade400),
+          _buildHorizontalBar("Hygiene", hygieneScore, Icons.clean_hands_rounded, Colors.lightBlue.shade400, lang),
         ],
       ),
     );
   }
 
-  Widget _buildHorizontalBar(String title, double score, IconData icon, Color color) {
+  Widget _buildHorizontalBar(String title, double score, IconData icon, Color color, String lang) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -160,12 +166,13 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                title,
-                style: const TextStyle(
+                TranslationHelper.translate(title, lang),
+                style: TranslationHelper.getTextStyle(
+                  lang,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: ThemeColors.primaryText,
-                ),
+                ).copyWith(height: 1.2),
               ),
             ),
             Text(
@@ -213,7 +220,7 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
     );
   }
 
-  Widget _buildInfoBadge(({String msg, Color color, IconData icon, String title}) data) {
+  Widget _buildInfoBadge(({String msg, Color color, IconData icon, String title}) data, String lang) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
       padding: const EdgeInsets.all(20),
@@ -243,17 +250,19 @@ class _PersonalityTabContentState extends State<PersonalityTabContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data.title,
-                  style: TextStyle(
+                  TranslationHelper.translate(data.title, lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: data.color,
-                  ),
+                  ).copyWith(height: 1.2),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  data.msg,
-                  style: const TextStyle(
+                  TranslationHelper.translate(data.msg, lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontSize: 13,
                     color: ThemeColors.primaryText,
                     height: 1.5,

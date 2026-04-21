@@ -7,6 +7,8 @@ import '../widgets/yearly_fee_calendar.dart';
 import '../services/fee_calculator_service.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../providers/fee_settings_provider.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
 class FeeScreen extends ConsumerWidget {
   final KidData kid;
@@ -23,6 +25,7 @@ class FeeScreen extends ConsumerWidget {
     final String dueDate = feeSettings['dueDate']?.toString().isNotEmpty == true ? feeSettings['dueDate'].toString() : '10th';
     final String penaltyAmount = feeSettings['penaltyAmount']?.toString().isNotEmpty == true ? feeSettings['penaltyAmount'].toString() : '500';
     final String calendarInfoMessage = "Kindly ensure fee submissions are completed by the $dueDate to avoid a late penalty of Rs. $penaltyAmount.";
+    final lang = ref.watch(languageProvider);
 
     List<int> paymentHistory = [1, 5, 2, 8, 4]; // Dummy history for past months
     if (currentKid.monthlyFeeStatus.toLowerCase() == 'paid' && currentKid.monthlyFeeDate != null) {
@@ -101,7 +104,7 @@ class FeeScreen extends ConsumerWidget {
                     children: [
                       const SizedBox(height: 10),
                       // Reliability Score Gauge
-                      ReliabilityScoreChart(paymentHistoryDays: paymentHistory),
+                      ReliabilityScoreChart(paymentHistoryDays: paymentHistory, lang: lang),
                       const SizedBox(height: 20),
                       // Info Badge
                       Padding(
@@ -120,12 +123,18 @@ class FeeScreen extends ConsumerWidget {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  badgeMessage,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: badgeColor,
-                                  ),
+                                  TranslationHelper.translate(badgeMessage, lang),
+                                  style: lang == 'en' 
+                                    ? GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: badgeColor,
+                                      )
+                                    : TranslationHelper.getTextStyle(
+                                        lang,
+                                        fontSize: 13,
+                                        color: badgeColor,
+                                      ),
                                 ),
                               ),
                             ],
@@ -168,12 +177,18 @@ class FeeScreen extends ConsumerWidget {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  calendarInfoMessage,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: ThemeColors.primaryPurple,
-                                  ),
+                                  TranslationHelper.translate(calendarInfoMessage, lang),
+                                  style: lang == 'en'
+                                    ? GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: ThemeColors.primaryPurple,
+                                      )
+                                    : TranslationHelper.getTextStyle(
+                                        lang,
+                                        fontSize: 13,
+                                        color: ThemeColors.primaryPurple,
+                                      ),
                                 ),
                               ),
                             ],

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/kids_provider.dart';
 import '../providers/academic_performance_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
 class AcademicTabContent extends ConsumerStatefulWidget {
   final KidData kid;
@@ -29,7 +31,7 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
   }
   
   // Badge logic mapping natively using Records Feature in Dart 3!
-  ({String msg, Color color, IconData icon, String title}) _getScoreData(double score) {
+  ({String msg, Color color, IconData icon, String title}) _getScoreData(double score, String lang) {
     if (score >= 90) {
       return (
         msg: "Outstanding! 🎉 Your child is performing exceptionally well in both academics and homework. We are proud of their progress!",
@@ -82,6 +84,7 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
       classId: widget.kid.classId,
       className: widget.kid.className,
     )));
+    final lang = ref.watch(languageProvider);
 
     return Builder(
       builder: (context) {
@@ -96,26 +99,26 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
 
           final double averageAcademic = subjectScores.values.reduce((a, b) => a + b) / subjectScores.length;
           final double overallScore = (averageAcademic * 0.6) + (homeworkScore * 0.4);
-          final badgeData = _getScoreData(overallScore);
+          final badgeData = _getScoreData(overallScore, lang);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionTitle("Academic Performance"),
+                _buildSectionTitle(TranslationHelper.translate("Academic Performance", lang), lang),
                 const SizedBox(height: 16),
                 _buildAcademicBarChart(subjectScores),
                 
                 const SizedBox(height: 32),
-                _buildSectionTitle("Homework Completion"),
+                _buildSectionTitle(TranslationHelper.translate("Homework Completion", lang), lang),
                 const SizedBox(height: 16),
                 _buildHomeworkChart(homeworkScore),
                 
                 const SizedBox(height: 32),
-                _buildSectionTitle("Progress Insight"),
+                _buildSectionTitle(TranslationHelper.translate("Progress Insight", lang), lang),
                 const SizedBox(height: 16),
-                _buildInfoBadge(badgeData),
+                _buildInfoBadge(badgeData, lang),
                 const SizedBox(height: 24),
               ],
             ),
@@ -170,14 +173,15 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, String lang) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TranslationHelper.getTextStyle(
+        lang,
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: ThemeColors.primaryText,
-      ),
+      ).copyWith(height: 1.2),
     );
   }
 
@@ -335,7 +339,7 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
     );
   }
 
-  Widget _buildInfoBadge(({String msg, Color color, IconData icon, String title}) data) {
+  Widget _buildInfoBadge(({String msg, Color color, IconData icon, String title}) data, String lang) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
       padding: const EdgeInsets.all(20),
@@ -365,17 +369,19 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data.title,
-                  style: TextStyle(
+                  TranslationHelper.translate(data.title, lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: data.color,
-                  ),
+                  ).copyWith(height: 1.2),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  data.msg,
-                  style: const TextStyle(
+                  TranslationHelper.translate(data.msg, lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontSize: 13,
                     color: ThemeColors.primaryText,
                     height: 1.5,

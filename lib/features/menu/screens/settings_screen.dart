@@ -3,14 +3,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../services/notification_settings_helper.dart';
 
-class SettingsScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/language_provider.dart';
+
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _newPostAlert = true;
   bool _msgAlert = true;
   bool _attendanceAlert = true;
@@ -43,6 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final languageCode = ref.watch(languageProvider);
+
     return Scaffold(
       backgroundColor: ThemeColors.backgroundColor,
       appBar: AppBar(
@@ -121,6 +126,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           setState(() => _wellnessAlert = value);
                           _saveSetting(NotificationSettingsHelper.keyWellnessAlert, value);
                         },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Card(
+                elevation: 4,
+                shadowColor: Colors.black12,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          'App Language',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeColors.primaryPurple,
+                          ),
+                        ),
+                      ),
+                      ListTile(
+                        title: const Text('Select Language'),
+                        trailing: DropdownButton<String>(
+                          value: languageCode,
+                          underline: const SizedBox(),
+                          icon: const Icon(Icons.arrow_drop_down, color: ThemeColors.primaryPurple),
+                          items: const [
+                            DropdownMenuItem(value: 'en', child: Text('English')),
+                            DropdownMenuItem(value: 'ur', child: Text('Urdu (اردو)')),
+                          ],
+                          onChanged: (String? val) {
+                            if (val != null) {
+                              ref.read(languageProvider.notifier).setLanguage(val);
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),

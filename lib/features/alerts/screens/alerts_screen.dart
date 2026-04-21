@@ -5,6 +5,8 @@ import '../providers/alerts_provider.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../../kids/screens/kid_details_screen.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
 class AlertsScreen extends ConsumerStatefulWidget {
   const AlertsScreen({super.key});
@@ -174,6 +176,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     final alertsAsyncValue = ref.watch(alertsProvider);
+    final lang = ref.watch(languageProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -224,9 +227,10 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                           onPressed: _deleteSelected,
                         ),
                       ] else ...[
-                        const Text(
-                          'Recent Alerts',
-                          style: TextStyle(
+                        Text(
+                          TranslationHelper.translate('Recent Alerts', lang),
+                          style: TranslationHelper.getTextStyle(
+                            lang,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: ThemeColors.primaryPurple,
@@ -298,16 +302,20 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                                 )
                               : _buildAlertIcon(alert),
                           title: Text(
-                            alert.title,
-                            style: TextStyle(
+                            TranslationHelper.translate(alert.title, lang),
+                            style: TranslationHelper.getTextStyle(
+                              lang,
                               fontWeight: alert.read ? FontWeight.normal : FontWeight.bold,
-                            ),
+                            ).copyWith(height: 1.2),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 4),
-                              Text(alert.message),
+                              Text(
+                                TranslationHelper.translate(alert.message, lang),
+                                style: TranslationHelper.getTextStyle(lang, fontSize: 13, height: 1.5),
+                              ),
                               if (alert.createdAt != null) ...[
                                 const SizedBox(height: 6),
                                 Text(

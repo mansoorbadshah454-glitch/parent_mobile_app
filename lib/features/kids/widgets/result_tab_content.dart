@@ -3,8 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/kids_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
-class ResultTabContent extends StatelessWidget {
+class ResultTabContent extends ConsumerWidget {
   final KidData kid;
 
   const ResultTabContent({Key? key, required this.kid}) : super(key: key);
@@ -34,8 +37,9 @@ class ResultTabContent extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hasResult = kid.resultUrl != null && kid.resultUrl!.isNotEmpty;
+    final lang = ref.watch(languageProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -73,12 +77,13 @@ class ResultTabContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  hasResult ? 'Result Card Available' : 'Result Card Not Yet Uploaded',
-                  style: GoogleFonts.montserrat(
+                  TranslationHelper.translate(hasResult ? 'Result Card Available' : 'Result Card Not Yet Uploaded', lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     color: Colors.black87,
-                  ),
+                  ).copyWith(fontFamily: lang == 'en' ? GoogleFonts.montserrat().fontFamily : null),
                   textAlign: TextAlign.center,
                 ),
                 if (hasResult && kid.resultFileName != null) ...[
@@ -100,11 +105,12 @@ class ResultTabContent extends StatelessWidget {
                     onPressed: hasResult ? () => _downloadResultCard(context) : null,
                     icon: const Icon(Icons.download_rounded, size: 20),
                     label: Text(
-                      'Download Result Card',
-                      style: GoogleFonts.montserrat(
+                      TranslationHelper.translate('Download Result Card', lang),
+                      style: TranslationHelper.getTextStyle(
+                        lang,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
-                      ),
+                      ).copyWith(fontFamily: lang == 'en' ? GoogleFonts.montserrat().fontFamily : null),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ThemeColors.primaryPurple,
@@ -142,21 +148,23 @@ class ResultTabContent extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Result Card Information',
-                        style: GoogleFonts.montserrat(
+                        TranslationHelper.translate('Result Card Information', lang),
+                        style: TranslationHelper.getTextStyle(
+                          lang,
                           fontWeight: FontWeight.bold,
                           color: Colors.blue.shade900,
                           fontSize: 16,
-                        ),
+                        ).copyWith(fontFamily: lang == 'en' ? GoogleFonts.montserrat().fontFamily : null),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "When your child's result card is available, it will be uploaded here by the school administration or class teacher. You will be able to download it securely.",
-                        style: GoogleFonts.montserrat(
+                        TranslationHelper.translate("When your child's result card is available, it will be uploaded here by the school administration or class teacher. You will be able to download it securely.", lang),
+                        style: TranslationHelper.getTextStyle(
+                          lang,
                           color: Colors.blue.shade800,
                           fontSize: 13,
                           height: 1.5,
-                        ),
+                        ).copyWith(fontFamily: lang == 'en' ? GoogleFonts.montserrat().fontFamily : null),
                       ),
                     ],
                   ),

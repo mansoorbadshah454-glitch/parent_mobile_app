@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import '../providers/kids_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
-class AttendanceTabContent extends StatefulWidget {
+class AttendanceTabContent extends ConsumerStatefulWidget {
   final KidData kid;
   
   const AttendanceTabContent({Key? key, required this.kid}) : super(key: key);
 
   @override
-  State<AttendanceTabContent> createState() => _AttendanceTabContentState();
+  ConsumerState<AttendanceTabContent> createState() => _AttendanceTabContentState();
 }
 
-class _AttendanceTabContentState extends State<AttendanceTabContent> {
+class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
   late DateTime _currentDate;
   late DateTime _displayedMonth;
   Map<DateTime, String> _mockAttendanceData = {};
@@ -166,6 +169,7 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider);
     final badgeData = _getAttendanceData(_attendancePercentage);
     final daysInMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 0).day;
     final totalCells = _firstDayOffset + daysInMonth;
@@ -201,8 +205,9 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
                       color: ThemeColors.primaryPurple,
                     ),
                     Text(
-                      '${_monthNames[_displayedMonth.month - 1]} ${_displayedMonth.year}',
-                      style: const TextStyle(
+                      '${TranslationHelper.translate(_monthNames[_displayedMonth.month - 1], lang)} ${_displayedMonth.year}',
+                      style: TranslationHelper.getTextStyle(
+                        lang,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: ThemeColors.primaryText,
@@ -302,16 +307,17 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
           ),
           
           const SizedBox(height: 32),
-          const Text(
-            "Monthly Summary",
-            style: TextStyle(
+          Text(
+            TranslationHelper.translate("Monthly Summary", lang),
+            style: TranslationHelper.getTextStyle(
+              lang,
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: ThemeColors.primaryText,
-            ),
+            ).copyWith(height: 1.2),
           ),
           const SizedBox(height: 16),
-          _buildInfoBadge(badgeData),
+          _buildInfoBadge(badgeData, lang),
           const SizedBox(height: 24),
         ],
       ),
@@ -342,7 +348,7 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
     );
   }
 
-  Widget _buildInfoBadge(({String msg, Color color, IconData icon, String title}) data) {
+  Widget _buildInfoBadge(({String msg, Color color, IconData icon, String title}) data, String lang) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
       padding: const EdgeInsets.all(20),
@@ -372,17 +378,19 @@ class _AttendanceTabContentState extends State<AttendanceTabContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data.title,
-                  style: TextStyle(
+                  TranslationHelper.translate(data.title, lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: data.color,
-                  ),
+                  ).copyWith(height: 1.2),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  data.msg,
-                  style: const TextStyle(
+                  TranslationHelper.translate(data.msg, lang),
+                  style: TranslationHelper.getTextStyle(
+                    lang,
                     fontSize: 13,
                     color: ThemeColors.primaryText,
                     height: 1.5,
