@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart' as flutter_secure_storage;
 import '../services/auth_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -43,6 +44,13 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
         // Save schoolId to SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('current_school_id', schoolId);
+
+        const storage = flutter_secure_storage.FlutterSecureStorage(
+          aOptions: flutter_secure_storage.AndroidOptions(encryptedSharedPreferences: true)
+        );
+        await storage.write(key: 'saved_email', value: email);
+        await storage.write(key: 'saved_password', value: password);
+        await storage.write(key: 'saved_school_id', value: schoolId);
       }
 
       state = const AsyncValue.data(null);

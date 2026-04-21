@@ -129,9 +129,13 @@ class PushNotificationService {
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       print('Parent User granted permission for FCM');
       // Get the token
-      String? token = await _fcm.getToken();
-      if (token != null) {
-         await saveTokenToDatabase(token, schoolId, uid);
+      try {
+        String? token = await _fcm.getToken();
+        if (token != null) {
+           await saveTokenToDatabase(token, schoolId, uid);
+        }
+      } catch (e) {
+        print("Error getting FCM token: $e");
       }
 
       // Refresh listener

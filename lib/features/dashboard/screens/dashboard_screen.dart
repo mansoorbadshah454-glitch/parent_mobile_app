@@ -340,39 +340,101 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      GestureDetector(
-                        onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Colors.white24,
-                              child: Icon(Icons.school, size: 20, color: Colors.white),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  parentData.schoolName ?? 'School App',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+                              return Stack(
+                                alignment: Alignment.centerLeft,
+                                children: <Widget>[
+                                  ...previousChildren,
+                                  if (currentChild != null) currentChild,
+                                ],
+                              );
+                            },
+                            transitionBuilder: (Widget child, Animation<double> animation) {
+                              final isSchoolBook = child.key == const ValueKey('header_school_book');
+                              final slideAnimation = Tween<Offset>(
+                                begin: isSchoolBook ? const Offset(0.0, 0.5) : const Offset(0.0, -0.5),
+                                end: Offset.zero,
+                              ).animate(animation);
+
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: slideAnimation,
+                                  child: child,
                                 ),
-                                Text(
-                                  "Track your kid's education",
-                                  style: GoogleFonts.montserrat(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                              );
+                            },
+                            child: (!_showMenuBar && currentIndex == 0)
+                                ? Container(
+                                    key: const ValueKey('header_school_book'),
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 2),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.shield, color: Colors.white, size: 28),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'SchoolBook',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: -0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Container(
+                                    key: const ValueKey('header_school_name'),
+                                    child: Row(
+                                      children: [
+                                        const CircleAvatar(
+                                          radius: 18,
+                                          backgroundColor: Colors.white24,
+                                          child: Icon(Icons.school, size: 20, color: Colors.white),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  parentData.schoolName ?? 'School App',
+                                                  style: GoogleFonts.poppins(
+                                                    color: Colors.white,
+                                                    fontSize: 19,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                "Track your kid's education",
+                                                style: GoogleFonts.montserrat(
+                                                  color: Colors.white70,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 48), // Spacer to maintain layout balance

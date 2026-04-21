@@ -10,39 +10,43 @@ import 'services/push_notification_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  
-  final data = message.data;
-  final title = data['title'] ?? message.notification?.title ?? 'New Notification';
-  final body = data['body'] ?? message.notification?.body ?? 'You have a new update';
-  final type = data['type'] ?? 'info';
-  
-  bool isEmergency = type == 'alert' && title.toString().toLowerCase().contains('urgent');
+  try {
+    await Firebase.initializeApp();
+    
+    final data = message.data;
+    final title = data['title'] ?? message.notification?.title ?? 'New Notification';
+    final body = data['body'] ?? message.notification?.body ?? 'You have a new update';
+    final type = data['type'] ?? 'info';
+    
+    bool isEmergency = type == 'alert' && title.toString().toLowerCase().contains('urgent');
 
-  final FlutterLocalNotificationsPlugin localNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-  await localNotificationsPlugin.initialize(initializationSettings);
+    final FlutterLocalNotificationsPlugin localNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    await localNotificationsPlugin.initialize(initializationSettings);
 
-  AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    isEmergency ? 'emergency_channel' : 'high_importance_channel',
-    isEmergency ? 'Emergency Alerts' : 'Important Notifications',
-    channelDescription: 'Used for important parent app notifications.',
-    importance: isEmergency ? Importance.max : Importance.high,
-    priority: isEmergency ? Priority.max : Priority.high,
-    enableVibration: true,
-    playSound: true,
-  );
+    AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      isEmergency ? 'emergency_channel' : 'high_importance_channel',
+      isEmergency ? 'Emergency Alerts' : 'Important Notifications',
+      channelDescription: 'Used for important parent app notifications.',
+      importance: isEmergency ? Importance.max : Importance.high,
+      priority: isEmergency ? Priority.max : Priority.high,
+      enableVibration: true,
+      playSound: true,
+    );
 
-  NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-  await localNotificationsPlugin.show(
-    message.messageId.hashCode,
-    title,
-    body,
-    platformDetails,
-    payload: type,
-  );
+    await localNotificationsPlugin.show(
+      message.messageId.hashCode,
+      title,
+      body,
+      platformDetails,
+      payload: type,
+    );
+  } catch (e) {
+    print("Background Isolate Crash Prevented: $e");
+  }
 }
 
 void main() async {
@@ -61,14 +65,17 @@ void main() async {
   final container = ProviderContainer();
   PushNotificationService().setContainer(container);
 
-  FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) {
-        Future.delayed(const Duration(milliseconds: 1500), () {
-            final type = message.data['type'];
-            PushNotificationService().routeFromType(type);
-        });
-      }
-  });
+  try {
+    final message = await FirebaseMessaging.instance.getInitialMessage();
+    if (message != null) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+          final type = message.data['type'];
+          PushNotificationService().routeFromType(type);
+      });
+    }
+  } catch (e) {
+    print("Error getting initial message: $e");
+  }
 
   runApp(UncontrolledProviderScope(
     container: container,

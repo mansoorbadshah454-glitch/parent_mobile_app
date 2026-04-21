@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +19,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordObscured = true;
 
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _hasSavedCredentials = false;
+  bool _isAuthenticating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final savedEmail = await _storage.read(key: 'saved_email');
+    final savedPassword = await _storage.read(key: 'saved_password');
+    final savedSchoolId = await _storage.read(key: 'saved_school_id');
+
+    if (savedEmail != null && savedPassword != null && savedSchoolId != null) {
+      if (mounted) {
+        setState(() {
+          _emailController.text = savedEmail;
+          _passwordController.text = savedPassword;
+          _schoolIdController.text = savedSchoolId;
+          _hasSavedCredentials = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics() async {
+    bool authenticated = false;
+    try {
+      if (mounted) {
+        setState(() {
+          _isAuthenticating = true;
+        });
+      }
+      authenticated = await auth.authenticate(
+        localizedReason: 'Please confirm your identity to login',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: false,
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _isAuthenticating = false;
+        });
+      }
+    } on PlatformException catch (e) {
+      print("Local Auth Error: $e");
+      if (mounted) {
+        setState(() {
+          _isAuthenticating = false;
+        });
+      }
+      return;
+    }
+    
+    if (!mounted) return;
+
+    if (authenticated) {
+      _login();
+    }
+  }
+
   @override
   void dispose() {
     _schoolIdController.dispose();
@@ -26,6 +96,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _login() {
     if (_formKey.currentState!.validate()) {
+      FocusScope.of(context).unfocus();
+      
       ref.read(authControllerProvider.notifier).login(
         _schoolIdController.text.trim(),
         _emailController.text.trim(),
@@ -116,6 +188,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _schoolIdController,
                     keyboardType: TextInputType.text,
+                    enabled: !isLoading && !_isAuthenticating,
                     decoration: const InputDecoration(
                       labelText: 'School ID',
                       prefixIcon: Icon(Icons.school_outlined),
@@ -131,6 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    enabled: !isLoading && !_isAuthenticating,
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       prefixIcon: Icon(Icons.email_outlined),
@@ -149,6 +223,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _isPasswordObscured,
+                    enabled: !isLoading && !_isAuthenticating,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
@@ -176,8 +251,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: isLoading ? null : _login,
-                    child: isLoading
+                    onPressed: isLoading || _isAuthenticating ? null : _login,
+                    child: isLoading || _isAuthenticating
                         ? const SizedBox(
                             height: 20,
                             width: 20,
@@ -188,6 +263,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           )
                         : const Text('Sign In', style: TextStyle(fontSize: 16)),
                   ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please contact your school administrator to reset your password.'),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Forgot password? Contact your school',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (_hasSavedCredentials) ...[
+                    const SizedBox(height: 24),
+                    const Divider(color: Colors.black12),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: isLoading || _isAuthenticating ? null : _authenticateWithBiometrics,
+                      icon: const Icon(Icons.fingerprint, color: Color(0xFF2E3B55), size: 28),
+                      label: const Text('Login with Device Lock', style: TextStyle(color: Color(0xFF2E3B55))),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
