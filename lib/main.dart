@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'services/push_notification_service.dart';
+import 'services/notification_settings_helper.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -17,6 +18,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final title = data['title'] ?? message.notification?.title ?? 'New Notification';
     final body = data['body'] ?? message.notification?.body ?? 'You have a new update';
     final type = data['type'] ?? 'info';
+    
+    final shouldShow = await NotificationSettingsHelper.shouldShowNotification(type);
+    if (!shouldShow) return;
     
     bool isEmergency = type == 'alert' && title.toString().toLowerCase().contains('urgent');
 

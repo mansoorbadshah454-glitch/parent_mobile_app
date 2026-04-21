@@ -20,6 +20,7 @@ import '../../menu/screens/school_timing_screen.dart';
 import '../../menu/screens/bank_details_screen.dart';
 import '../../menu/screens/help_support_screen.dart';
 import '../../menu/screens/about_screen.dart';
+import '../../menu/screens/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../kids/providers/kids_provider.dart';
 
@@ -286,6 +287,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings, color: ThemeColors.primaryPurple),
+              title: const Text('Settings', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
               },
             ),
             const Padding(

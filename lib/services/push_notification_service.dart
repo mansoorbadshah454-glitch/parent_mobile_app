@@ -7,6 +7,7 @@ import '../core/router/app_router.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../core/theme/theme_colors.dart';
 import '../features/kids/providers/kids_provider.dart';
+import 'notification_settings_helper.dart';
 
 class PushNotificationService {
   static final PushNotificationService _instance = PushNotificationService._internal();
@@ -152,6 +153,9 @@ class PushNotificationService {
           final body = message.notification?.body ?? '';
           final type = message.data['type'] ?? '';
           
+          final shouldShow = await NotificationSettingsHelper.shouldShowNotification(type);
+          if (!shouldShow) return;
+
           bool isEmergency = type == 'alert' && title.contains('Urgent');
 
           showGlobalAlert(title, body, type, isEmergency: isEmergency);
