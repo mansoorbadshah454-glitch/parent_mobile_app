@@ -340,6 +340,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           }
 
           return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: 16),
             children: listItems,
           );
