@@ -6,6 +6,7 @@ import '../widgets/shining_profile_avatar.dart';
 import '../widgets/academic_tab_content.dart';
 import '../widgets/personality_tab_content.dart';
 import '../widgets/attendance_tab_content.dart';
+import '../widgets/syllabus_tab_content.dart';
 import '../widgets/result_tab_content.dart';
 import '../widgets/chat_tab_content.dart';
 import '../../../core/providers/parent_data_provider.dart';
@@ -26,7 +27,7 @@ class KidDetailsScreen extends ConsumerWidget {
     final currentKid = kidsAsyncValue.value?.firstWhere((k) => k.id == kid.id, orElse: () => kid) ?? kid;
 
     return DefaultTabController(
-      length: 5,
+      length: 6,
       initialIndex: initialTabIndex,
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -137,6 +138,7 @@ class KidDetailsScreen extends ConsumerWidget {
                   Tab(text: 'Academic'),
                   Tab(text: 'Personality'),
                   Tab(text: 'Attendance'),
+                  Tab(text: 'Syllabus'),
                   Tab(text: 'Result'),
                   Tab(text: 'Chat'),
                 ],
@@ -150,6 +152,7 @@ class KidDetailsScreen extends ConsumerWidget {
                   AcademicTabContent(kid: currentKid),
                   PersonalityTabContent(kid: currentKid),
                   AttendanceTabContent(kid: currentKid),
+                  SyllabusTabContent(kid: currentKid),
                   ResultTabContent(kid: currentKid),
                   ChatTabContent(kid: currentKid),
                 ],
