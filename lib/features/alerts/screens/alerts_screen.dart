@@ -7,6 +7,7 @@ import '../../kids/screens/kid_details_screen.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/utils/translation_helper.dart';
+import 'performance_update_screen.dart';
 
 class AlertsScreen extends ConsumerStatefulWidget {
   const AlertsScreen({super.key});
@@ -81,9 +82,15 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
         break;
       case 'academic':
       case 'performance':
+      case 'performance update':
       case 'celebration':
         iconData = Icons.school_rounded;
         color = ThemeColors.primaryPurple;
+        break;
+      case 'result':
+      case 'document':
+        iconData = Icons.inventory_rounded;
+        color = Colors.indigo;
         break;
       case 'alert':
       case 'info':
@@ -144,32 +151,50 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     }
 
     if (targetKid != null) {
-      int tabIndex = 0; // Default fallback to Academic
       final type = alert.type.toLowerCase();
+      final title = alert.title.toLowerCase();
+      final message = alert.message.toLowerCase();
       
-      if (['attendance'].contains(type)) {
-        tabIndex = 2; // Index 2 is Attendance
-      } else if (['health', 'behavior', 'hygiene', 'personality'].contains(type)) {
-        tabIndex = 1; // Index 1 is Personality
-      } else if (['academic', 'performance', 'celebration'].contains(type)) {
-        tabIndex = 0; // Index 0 is Academic
-      } else {
-        tabIndex = 0; // Default fallback for unknown types
-      }
-
       if (!alert.read) {
         ref.read(alertsActionProvider).markAsRead(alert.id);
       }
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => KidDetailsScreen(
-            kid: targetKid!,
-            initialTabIndex: tabIndex,
+      if (type.contains('academic') || type.contains('performance') ||
+          title.contains('academic') || title.contains('performance') ||
+          message.contains('performance')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PerformanceUpdateScreen(
+              kid: targetKid!,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        int tabIndex = 0; // Default fallback to Academic
+        
+        if (['attendance'].contains(type)) {
+          tabIndex = 2; // Index 2 is Attendance
+        } else if (['health', 'behavior', 'hygiene', 'personality'].contains(type)) {
+          tabIndex = 1; // Index 1 is Personality
+        } else if (['celebration'].contains(type)) {
+          tabIndex = 0; // Index 0 is Academic
+        } else if (['result', 'document'].contains(type)) {
+          tabIndex = 3; // Index 3 is Result
+        } else {
+          tabIndex = 0; // Default fallback for unknown types
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => KidDetailsScreen(
+              kid: targetKid!,
+              initialTabIndex: tabIndex,
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -264,6 +289,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                 ),
                 Expanded(
                   child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(0),
                     itemCount: alerts.length,
                     separatorBuilder: (context, index) => const Divider(height: 1),

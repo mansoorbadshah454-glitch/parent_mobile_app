@@ -8,7 +8,6 @@ import '../providers/news_provider.dart';
 import '../../../core/providers/parent_data_provider.dart';
 import 'post_comments_modal.dart';
 import '../../../core/widgets/video_player_widget.dart';
-import 'full_screen_media_viewer.dart';
 import 'likers_dialog.dart';
 
 // Copy the ReactionPopup exactly from teacher app
@@ -101,6 +100,7 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
   OverlayEntry? _overlayEntry;
   final ValueNotifier<int> _hoverIndexNotifier = ValueNotifier(-1);
   final List<GlobalKey> _emojiKeys = List.generate(4, (_) => GlobalKey());
+  bool _isExpanded = false;
 
   static const List<List<Color>> _backgroundGradients = [
     [], // Default
@@ -204,6 +204,190 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
     if (type == 'wow') return Colors.amber;
     if (type == 'like') return Colors.blue;
     return Colors.grey[700] ?? Colors.grey;
+  }
+
+  void _openFullScreenViewer(BuildContext context, List<Map<String, dynamic>> media, int initialIndex) {
+      final PageController controller = PageController(initialPage: initialIndex);
+      showDialog(
+          context: context, 
+          builder: (_) => Dialog(
+            backgroundColor: Colors.black,
+            insetPadding: EdgeInsets.zero,
+            child: Stack(
+                children: [
+                    PageView.builder(
+                        controller: controller,
+                        itemCount: media.length,
+                        itemBuilder: (context, index) {
+                            final m = media[index];
+                            if (m['type'] == 'video') {
+                                return Center(child: VideoPlayerWidget(videoUrl: m['url']));
+                            }
+                            return InteractiveViewer(
+                                child: CachedNetworkImage(imageUrl: m['url']),
+                            );
+                        }
+                    ),
+                    Positioned(
+                        top: 40,
+                        right: 20,
+                        child: IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                            onPressed: () => Navigator.pop(context)
+                        )
+                    )
+                ]
+            )
+      ));
+  }
+
+  Widget _buildMediaItem(Map<String, dynamic> mediaList, List<Map<String, dynamic>> fullList, {BoxFit fit = BoxFit.cover}) {
+    final type = mediaList['type'] ?? 'image';
+    final url = mediaList['url'];
+    if (url == null || url.isEmpty) return const SizedBox();
+
+    Widget child;
+    if (type == 'video') {
+      child = Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(color: Colors.black),
+          const Center(child: Icon(Icons.play_circle_fill, size: 48, color: Colors.white70)),
+        ],
+      );
+    } else {
+      child = CachedNetworkImage(
+        imageUrl: url,
+        fit: fit,
+        placeholder: (context, url) => Container(color: Colors.white10, child: const Center(child: CircularProgressIndicator())),
+        errorWidget: (context, url, error) => const SizedBox(),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+         _openFullScreenViewer(context, fullList, fullList.indexOf(mediaList));
+      },
+      child: child,
+    );
+  }
+
+  Widget _buildMediaCollage(List<Map<String, dynamic>> media, BuildContext context) {
+    if (media.length == 1) {
+      if (media.first['type'] == 'video') {
+         return Center(child: VideoPlayerWidget(videoUrl: media.first['url']));
+      }
+      return SizedBox(
+        width: double.infinity,
+        child: _buildMediaItem(media.first, media)
+      );
+    }
+    
+    if (media.length == 2) {
+      return SizedBox(
+        height: 300,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _buildMediaItem(media[0], media)),
+            const SizedBox(width: 2),
+            Expanded(child: _buildMediaItem(media[1], media)),
+          ],
+        )
+      );
+    }
+
+    if (media.length == 3) {
+      return SizedBox(
+        height: 300,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 2, child: _buildMediaItem(media[0], media)),
+            const SizedBox(width: 2),
+            Expanded(
+              flex: 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _buildMediaItem(media[1], media)),
+                  const SizedBox(height: 2),
+                  Expanded(child: _buildMediaItem(media[2], media)),
+                ]
+              )
+            )
+          ],
+        )
+      );
+    }
+    
+    if (media.length == 4) {
+      return SizedBox(
+        height: 300,
+        child: Column(
+          children: [
+            Expanded(child: _buildMediaItem(media[0], media)),
+            const SizedBox(height: 2),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(child: _buildMediaItem(media[1], media)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildMediaItem(media[2], media)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildMediaItem(media[3], media)),
+                ]
+              )
+            )
+          ]
+        )
+      );
+    }
+
+    // 5 or more
+    return SizedBox(
+      height: 300,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: 2, child: _buildMediaItem(media[0], media)),
+          const SizedBox(height: 2),
+          Expanded(
+            flex: 1,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildMediaItem(media[1], media)),
+                const SizedBox(width: 2),
+                Expanded(child: _buildMediaItem(media[2], media)),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildMediaItem(media[3], media),
+                      if (media.length > 4)
+                        GestureDetector(
+                          onTap: () => _openFullScreenViewer(context, media, 3),
+                          child: Container(
+                            color: Colors.black54,
+                            child: Center(
+                              child: Text(
+                                "+${media.length - 4}",
+                                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)
+                              ),
+                            )
+                          ),
+                        )
+                    ],
+                  )
+                ),
+              ]
+            )
+          )
+        ]
+      )
+    );
   }
 
   @override
@@ -343,7 +527,7 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
 
           // Post Text Content
           if (post.content.isNotEmpty)
-            if (post.backgroundIndex != 0 && post.backgroundIndex < _backgroundGradients.length)
+            if (post.backgroundIndex != 0 && post.backgroundIndex < _backgroundGradients.length && post.content.length <= 130)
               Container(
                 width: double.infinity,
                 height: 300,
@@ -355,9 +539,9 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
                 child: Text(
                   post.content,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: post.content.length < 85 ? 28 : 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -365,63 +549,29 @@ class _ParentNewsPostCardState extends ConsumerState<ParentNewsPostCard> {
             else
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Text(
-                  post.content,
-                  style: const TextStyle(fontSize: 15, height: 1.4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (post.content.length > 200 && !_isExpanded) ? '${post.content.substring(0, 200)}...' : post.content,
+                      style: const TextStyle(fontSize: 15, height: 1.4),
+                    ),
+                    if (post.content.length > 200)
+                      GestureDetector(
+                        onTap: () => setState(() => _isExpanded = !_isExpanded),
+                        child: Padding(
+                           padding: const EdgeInsets.only(top: 4.0),
+                           child: Text(_isExpanded ? 'See less' : 'See more', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                        )
+                      )
+                  ],
                 ),
               ),
           const SizedBox(height: 8),
 
           // Post Media Attachment
-          if (post.attachmentUrl.isNotEmpty) ...[
-            if (post.attachmentType == 'video')
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => FullScreenMediaViewer(url: post.attachmentUrl, type: 'video')
-                  ));
-                },
-                behavior: HitTestBehavior.translucent,
-                child: IgnorePointer(
-                  child: VideoPlayerWidget(videoUrl: post.attachmentUrl),
-                ),
-              )
-            else if (post.attachmentType == 'image')
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => FullScreenMediaViewer(url: post.attachmentUrl, type: 'image')
-                  ));
-                },
-                child: CachedNetworkImage(
-                  imageUrl: post.attachmentUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 250,
-                    color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 200,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                  ),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: Colors.grey[100],
-                child: Row(
-                  children: [
-                    const Icon(Icons.attach_file),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text('Attachment: ${post.attachmentType}', overflow: TextOverflow.ellipsis)),
-                  ],
-                ),
-              ),
-          ],
+          if (post.media.isNotEmpty)
+            _buildMediaCollage(post.media, context),
 
           // Stats Row
           if (combinedLikeCount > 0 || post.commentCount > 0)

@@ -7,6 +7,7 @@ import '../core/router/app_router.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../core/theme/theme_colors.dart';
 import '../features/kids/providers/kids_provider.dart';
+import '../features/kids/screens/kid_details_screen.dart';
 import 'notification_settings_helper.dart';
 
 class PushNotificationService {
@@ -71,26 +72,52 @@ class PushNotificationService {
   // Handle routing based on type
   void routeFromType(String? type) {
     if (type == null) return;
+    
+    String baseType = type;
+    String? kidIdPayload;
+    if (type.contains(':')) {
+      final parts = type.split(':');
+      baseType = parts[0];
+      kidIdPayload = parts.length > 1 ? parts[1] : null;
+    }
+
     int tabIndex = 0; // Default to news
-    if (type == 'fee' || type == 'fee_update') {
+    if (baseType == 'fee' || baseType == 'fee_update') {
       tabIndex = 4; // Fee tab
-    } else if (type == 'chat' || type == 'admin-message' || type == 'chat_message' || type == 'message') {
+    } else if (baseType == 'chat' || baseType == 'admin-message' || baseType == 'chat_message' || baseType == 'message') {
       tabIndex = 2; // Chat tab
-    } else if (type == 'alert' || type == 'academic' || type == 'health' || type == 'wellness' || type == 'behavior' || type == 'hygiene' || type == 'personality' || type == 'performance' || type == 'celebration' || type == 'info') {
+    } else if (baseType == 'alert' || baseType == 'academic' || baseType == 'health' || baseType == 'wellness' || baseType == 'behavior' || baseType == 'hygiene' || baseType == 'personality' || baseType == 'performance' || baseType == 'celebration' || baseType == 'info') {
       tabIndex = 3; // Alerts tab
-    } else if (type == 'post' || type == 'news') {
+    } else if (baseType == 'post' || baseType == 'news') {
       tabIndex = 0; // News tab
-    } else if (type == 'kid' || type == 'kids') {
+    } else if (baseType == 'kid' || baseType == 'kids' || baseType == 'result') {
       tabIndex = 1; // Kids tab
     }
     
     // Jump to the right tab using the provider
     _container?.read(dashboardTabProvider.notifier).state = tabIndex;
+
+    // Direct route for result card alerts
+    if (baseType == 'result' && kidIdPayload != null && kidIdPayload.isNotEmpty) {
+      final kidsAsyncValue = _container?.read(kidsProvider);
+      if (kidsAsyncValue != null && kidsAsyncValue.hasValue) {
+        try {
+          final kid = kidsAsyncValue.value!.firstWhere((k) => k.id == kidIdPayload);
+          Future.delayed(const Duration(milliseconds: 300), () {
+            rootNavigatorKey.currentState?.push(
+              MaterialPageRoute(builder: (_) => KidDetailsScreen(kid: kid, initialTabIndex: 3)),
+            );
+          });
+        } catch (e) {
+          print("Kid ID not found for result routing: $e");
+        }
+      }
+    }
   }
 
   static OverlayEntry? _currentBanner;
 
-  static void showGlobalAlert(String title, String body, String type, {bool isEmergency = false}) {
+  static void showGlobalAlert(String title, String body, String type, {bool isEmergency = false, String? payload}) {
     final overlayState = rootNavigatorKey.currentState?.overlay;
     if (overlayState != null) {
       if (_currentBanner != null) {
@@ -103,6 +130,7 @@ class PushNotificationService {
           title: title,
           body: body,
           type: type,
+          payload: payload ?? type,
           isEmergency: isEmergency,
           onDismissed: () {
             if (_currentBanner != null) {
@@ -148,24 +176,55 @@ class PushNotificationService {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         print('Got a push notification whilst in the foreground!');
 
-        if (message.notification != null) {
-          final title = message.notification?.title ?? 'Notification';
-          final body = message.notification?.body ?? '';
-          final type = message.data['type'] ?? '';
+        final title = message.notification?.title ?? message.data['title'] ?? 'Notification';
+        final body = message.notification?.body ?? message.data['body'] ?? '';
+        final type = message.data['type'] ?? '';
+        final kidId = message.data['kidId'] ?? message.data['studentId'];
+        final studentName = message.data['studentName'] ?? 'your kid';
           
-          final shouldShow = await NotificationSettingsHelper.shouldShowNotification(type);
-          if (!shouldShow) return;
+        if (title == 'Notification' && body.isEmpty && type.isEmpty) return; // Prevent empty pings
 
-          bool isEmergency = type == 'alert' && title.contains('Urgent');
+        final resolvedType = (type == 'alert' && message.data['alertType'] != null && message.data['alertType'].toString().isNotEmpty) 
+            ? message.data['alertType'].toString()
+            : type;
 
-          showGlobalAlert(title, body, type, isEmergency: isEmergency);
-        }
+        String routingPayload = (resolvedType == 'result' && kidId != null) ? '$resolvedType:$kidId' : resolvedType;
+          
+        final shouldShow = await NotificationSettingsHelper.shouldShowNotification(resolvedType);
+        if (!shouldShow) return;
+
+        bool isEmergency = type == 'alert' && title.contains('Urgent');
+
+        if (resolvedType == 'result') {
+            const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+              'result_alerts', 'Result Alerts',
+              importance: Importance.max, priority: Priority.high,
+            );
+            const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
+            PushNotificationService()._localNotificationsPlugin.show(
+              kidId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+              'Result Card Available',
+              'The result card for $studentName is available to download.',
+              notificationDetails,
+              payload: routingPayload,
+            );
+          }
+          showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
       });
       
       // Background message tap handler
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
          final type = message.data['type'];
-         routeFromType(type);
+         final kidId = message.data['kidId'] ?? message.data['studentId'];
+         final alertType = message.data['alertType'];
+         
+         final resType = (type == 'alert' && alertType != null) ? alertType.toString() : type;
+         
+         if (resType == 'result' && kidId != null) {
+            routeFromType('$resType:$kidId');
+         } else {
+            routeFromType(resType);
+         }
       });
       
     } else {
@@ -194,6 +253,7 @@ class AnimatedTopBanner extends StatefulWidget {
   final String title;
   final String body;
   final String type;
+  final String payload;
   final bool isEmergency;
   final VoidCallback onDismissed;
 
@@ -202,6 +262,7 @@ class AnimatedTopBanner extends StatefulWidget {
     required this.title,
     required this.body,
     required this.type,
+    required this.payload,
     this.isEmergency = false,
     required this.onDismissed,
   }) : super(key: key);
@@ -298,7 +359,7 @@ class _AnimatedTopBannerState extends State<AnimatedTopBanner> with SingleTicker
                    trailing: TextButton(
                      onPressed: () {
                         _dismissBanner();
-                        PushNotificationService().routeFromType(widget.type);
+                        PushNotificationService().routeFromType(widget.payload);
                      },
                      style: TextButton.styleFrom(
                         backgroundColor: Colors.white.withOpacity(0.2),

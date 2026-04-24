@@ -314,7 +314,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: replies.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final time = data['timestamp'] as Timestamp?;
+            final time = data['timestamp'] is Timestamp ? data['timestamp'] as Timestamp : null;
             final tString = time != null ? timeago.format(time.toDate()) : 'Now';
             
             return Padding(
@@ -463,7 +463,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                   itemCount: comments.length,
                   itemBuilder: (context, index) {
                     final data = comments[index].data() as Map<String, dynamic>;
-                    final timestamp = data['timestamp'] as Timestamp?;
+                    final timestamp = data['timestamp'] is Timestamp ? data['timestamp'] as Timestamp : null;
                     final timeString = timestamp != null ? timeago.format(timestamp.toDate()) : 'Just now';
                     
                     final likesList = List<String>.from(data['likes'] ?? []);

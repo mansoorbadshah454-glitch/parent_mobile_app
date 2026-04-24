@@ -1,43 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import '../providers/kids_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/utils/translation_helper.dart';
 
-class ResultTabContent extends ConsumerWidget {
+class ResultTabContent extends ConsumerStatefulWidget {
   final KidData kid;
 
   const ResultTabContent({Key? key, required this.kid}) : super(key: key);
 
+  @override
+  ConsumerState<ResultTabContent> createState() => _ResultTabContentState();
+}
+
+class _ResultTabContentState extends ConsumerState<ResultTabContent> {
   Future<void> _downloadResultCard(BuildContext context) async {
-    final urlStr = kid.resultUrl;
-    if (urlStr == null || urlStr.isEmpty) return;
+    final liveKids = ref.read(kidsProvider).value;
+    final liveKid = liveKids?.firstWhere((k) => k.id == widget.kid.id, orElse: () => widget.kid) ?? widget.kid;
+    final urlStr = liveKid.resultUrl;
     
-    final uri = Uri.parse(urlStr);
+    if (urlStr == null || urlStr.isEmpty) return;
+
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open the result file.')),
-          );
+      final String originalName = liveKid.resultFileName ?? 'result_card.pdf';
+      final String ext = originalName.contains('.') ? originalName.split('.').last.toLowerCase() : 'pdf';
+      final bool isImage = ['jpg', 'jpeg', 'png'].contains(ext);
+      final uri = Uri.parse(urlStr);
+
+      if (isImage) {
+        // Image Download Logic -> directly download to storage
+        final String baseName = originalName.contains('.') ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
+        final String uniqueName = '${baseName}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Downloading image to device storage...')));
         }
+        
+        await FileDownloader.downloadFile(
+          url: urlStr,
+          name: uniqueName,
+          onDownloadCompleted: (String path) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image Saved successfully!\n$path'), duration: const Duration(seconds: 4)));
+            }
+          },
+          onDownloadError: (String error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error downloading image: $error')));
+            }
+          },
+        ).timeout(const Duration(seconds: 45), onTimeout: () {
+          throw Exception('Download timed out.');
+        });
+      } else {
+        // PDF Logic -> Open in external browser natively
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening PDF document in browser...')));
+        }
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening file: $e')),
-        );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error processing file: $e')));
       }
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final liveKids = ref.watch(kidsProvider).value;
+    final kid = liveKids?.firstWhere((k) => k.id == widget.kid.id, orElse: () => widget.kid) ?? widget.kid;
+    
     final hasResult = kid.resultUrl != null && kid.resultUrl!.isNotEmpty;
     final lang = ref.watch(languageProvider);
 

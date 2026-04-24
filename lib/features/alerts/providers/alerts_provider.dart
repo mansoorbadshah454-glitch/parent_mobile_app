@@ -32,9 +32,9 @@ class AlertModel {
       read: map['read'] ?? false,
       studentId: map['studentId'],
       status: map['status'],
-      createdAt: map['createdAt'] != null 
+      createdAt: map['createdAt'] is Timestamp 
           ? (map['createdAt'] as Timestamp).toDate() 
-          : null,
+          : (map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) : null),
     );
   }
 }
@@ -63,7 +63,7 @@ final alertsProvider = StreamProvider<List<AlertModel>>((ref) async* {
       .snapshots();
 
   await for (final snapshot in notificationsStream) {
-    final allowedTypes = ['attendance', 'academic', 'performance', 'health', 'behavior', 'hygiene', 'personality', 'celebration', 'alert', 'info'];
+    final allowedTypes = ['attendance', 'academic', 'performance', 'health', 'behavior', 'hygiene', 'personality', 'celebration', 'alert', 'info', 'result', 'document'];
     
     var alerts = snapshot.docs
         .map((doc) => AlertModel.fromMap(doc.data(), doc.id))

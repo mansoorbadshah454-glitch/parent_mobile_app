@@ -15,6 +15,7 @@ class NewsPost {
   final String authorImage;
   final String attachmentUrl;
   final String attachmentType;
+  final List<Map<String, dynamic>> media;
   final DateTime? timestamp;
   final List<String> likes;
   final int commentCount;
@@ -32,6 +33,7 @@ class NewsPost {
     required this.authorImage,
     required this.attachmentUrl,
     required this.attachmentType,
+    required this.media,
     this.timestamp,
     required this.likes,
     required this.commentCount,
@@ -41,10 +43,22 @@ class NewsPost {
 
   factory NewsPost.fromMap(Map<String, dynamic> map, String id) {
     // Detect video from URL
-    String attachmentUrl = map['attachmentUrl'] ?? map['imageUrl'] ?? '';
-    String attachmentType = map['attachmentType'] ?? '';
+    String attachmentUrl = map['attachmentUrl'] ?? map['imageUrl'] ?? map['mediaUrl'] ?? '';
+    String attachmentType = map['attachmentType'] ?? map['mediaType'] ?? '';
     if (attachmentType.isEmpty && attachmentUrl.isNotEmpty) {
       attachmentType = attachmentUrl.contains('.mp4') ? 'video' : 'image';
+    }
+
+    List<Map<String, dynamic>> mediaList = [];
+    if (map['media'] != null) {
+        for(var m in (map['media'] as List)) {
+            mediaList.add(Map<String, dynamic>.from(m as Map));
+        }
+    } else if (attachmentUrl.isNotEmpty) {
+        mediaList.add({
+           'url': attachmentUrl,
+           'type': attachmentType
+        });
     }
 
     return NewsPost(
@@ -58,13 +72,16 @@ class NewsPost {
       authorImage: map['authorImage'] ?? '',
       attachmentUrl: attachmentUrl,
       attachmentType: attachmentType,
-      timestamp: map['timestamp'] != null 
+      media: mediaList,
+      timestamp: map['timestamp'] is Timestamp 
           ? (map['timestamp'] as Timestamp).toDate() 
-          : null,
+          : (map['timestamp'] != null ? DateTime.tryParse(map['timestamp'].toString()) : null),
       likes: List<String>.from(map['likes'] ?? []),
       commentCount: map['commentCount'] ?? 0,
       backgroundIndex: map['backgroundIndex'] ?? 0,
-      reactions: map['reactions'] as Map<String, dynamic>? ?? {},
+      reactions: map['reactions'] is Map 
+          ? Map<String, dynamic>.from(map['reactions'] as Map) 
+          : <String, dynamic>{},
     );
   }
 }

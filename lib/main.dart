@@ -19,7 +19,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final body = data['body'] ?? message.notification?.body ?? 'You have a new update';
     final type = data['type'] ?? 'info';
     
-    final shouldShow = await NotificationSettingsHelper.shouldShowNotification(type);
+    // Unpack alertType if this is a generic 'alert' bundle
+    final resolvedType = (type == 'alert' && data['alertType'] != null && data['alertType'].toString().isNotEmpty) 
+        ? data['alertType'].toString()
+        : type;
+    
+    final shouldShow = await NotificationSettingsHelper.shouldShowNotification(resolvedType);
     if (!shouldShow) return;
     
     bool isEmergency = type == 'alert' && title.toString().toLowerCase().contains('urgent');

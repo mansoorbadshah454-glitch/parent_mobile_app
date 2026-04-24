@@ -20,6 +20,7 @@ class KidsScreen extends ConsumerWidget {
               return const Center(child: Text('No kids linked to this account.'));
             }
             return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
               itemCount: kids.length,
               itemBuilder: (context, index) {

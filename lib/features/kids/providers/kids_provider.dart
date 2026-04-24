@@ -32,6 +32,9 @@ class KidData {
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
+      final dynamic wellnessData = map['wellness'];
+      final Map<String, dynamic> wellnessMap = wellnessData is Map ? Map<String, dynamic>.from(wellnessData) : <String, dynamic>{};
+
     return KidData(
       id: id,
       name: map['name'] ?? '${map['firstName'] ?? ''} ${map['lastName'] ?? ''}'.trim(),
@@ -40,15 +43,15 @@ class KidData {
       classId: overrideClassId ?? map['classId']?.toString() ?? '',
       rollNo: map['rollNo']?.toString() ?? map['rollNumber']?.toString() ?? 'N/A',
       wellness: {
-        'behavior': int.tryParse(map['wellness']?['behavior']?.toString() ?? '80') ?? 80,
-        'health': int.tryParse(map['wellness']?['health']?.toString() ?? '80') ?? 80,
-        'hygiene': int.tryParse(map['wellness']?['hygiene']?.toString() ?? '80') ?? 80,
+        'behavior': int.tryParse(wellnessMap['behavior']?.toString() ?? '80') ?? 80,
+        'health': int.tryParse(wellnessMap['health']?.toString() ?? '80') ?? 80,
+        'hygiene': int.tryParse(wellnessMap['hygiene']?.toString() ?? '80') ?? 80,
       },
       attendanceHistory: _parseAttendanceSafe(map['attendanceHistory']),
       monthlyFeeStatus: map['monthlyFeeStatus']?.toString() ?? 'unpaid',
       monthlyFeeDate: map['monthlyFeeDate']?.toString(),
-      resultUrl: map['uploadedResultUrl']?.toString() ?? map['resultCardUrl']?.toString(),
-      resultFileName: map['resultCardName']?.toString() ?? (map['uploadedResultType'] != null ? 'result.${map['uploadedResultType']}' : null),
+      resultUrl: map['resultCardUrl']?.toString() ?? map['uploadedResultUrl']?.toString(),
+      resultFileName: map['resultCardName']?.toString() ?? (map['uploadedResultType'] != null ? 'result.${map['uploadedResultType']}' : 'result_card.pdf'),
     );
   }
 

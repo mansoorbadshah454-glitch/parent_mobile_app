@@ -51,9 +51,9 @@ class MessageModel {
       message: map['message'] ?? '',
       attachmentUrl: map['attachmentUrl'],
       attachmentType: map['attachmentType'],
-      timestamp: map['timestamp'] != null 
+      timestamp: map['timestamp'] is Timestamp 
           ? (map['timestamp'] as Timestamp).toDate() 
-          : null,
+          : (map['timestamp'] != null ? DateTime.tryParse(map['timestamp'].toString()) : null),
       type: map['type'],
       senderRole: map['senderRole'],
       read: map['read'] ?? true,

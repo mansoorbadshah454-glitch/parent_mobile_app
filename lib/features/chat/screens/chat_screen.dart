@@ -213,7 +213,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                          if (isSelectionMode) {
                            _toggleGroupSelection(msgs);
                          } else {
-                           Navigator.push(context, MaterialPageRoute(builder: (_) => KidDetailsScreen(kid: kid, initialTabIndex: 3)));
+                           Navigator.push(context, MaterialPageRoute(builder: (_) => KidDetailsScreen(kid: kid, initialTabIndex: 4)));
                          }
                       },
                       child: Container(
