@@ -8,7 +8,7 @@ import '../../../core/theme/theme_colors.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/utils/translation_helper.dart';
 import 'performance_update_screen.dart';
-
+import 'scheduled_tests_screen.dart';
 class AlertsScreen extends ConsumerStatefulWidget {
   const AlertsScreen({super.key});
 
@@ -159,7 +159,16 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
         ref.read(alertsActionProvider).markAsRead(alert.id);
       }
 
-      if (type.contains('academic') || type.contains('performance') ||
+      if (title.contains('test scheduled') || title.contains('test cancelled') || title.contains('test results')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ScheduledTestsScreen(
+              kid: targetKid!,
+            ),
+          ),
+        );
+      } else if (type.contains('academic') || type.contains('performance') ||
           title.contains('academic') || title.contains('performance') ||
           message.contains('performance')) {
         Navigator.push(
