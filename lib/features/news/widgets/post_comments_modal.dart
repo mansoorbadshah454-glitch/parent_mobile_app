@@ -313,7 +313,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: replies.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
             final time = data['timestamp'] is Timestamp ? data['timestamp'] as Timestamp : null;
             final tString = time != null ? timeago.format(time.toDate()) : 'Now';
             
@@ -462,7 +462,7 @@ class _PostCommentsModalState extends ConsumerState<PostCommentsModal> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: comments.length,
                   itemBuilder: (context, index) {
-                    final data = comments[index].data() as Map<String, dynamic>;
+                    final data = comments[index].data() as Map<String, dynamic>? ?? <String, dynamic>{};
                     final timestamp = data['timestamp'] is Timestamp ? data['timestamp'] as Timestamp : null;
                     final timeString = timestamp != null ? timeago.format(timestamp.toDate()) : 'Just now';
                     

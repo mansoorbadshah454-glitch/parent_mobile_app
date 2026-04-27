@@ -46,13 +46,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
     NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-    await localNotificationsPlugin.show(
-      message.messageId.hashCode,
-      title,
-      body,
-      platformDetails,
-      payload: type,
-    );
+    // Only show a local notification if it's a data-only message.
+    // If message.notification is not null, FCM automatically displays a system notification.
+    if (message.notification == null) {
+      await localNotificationsPlugin.show(
+        message.messageId.hashCode,
+        title,
+        body,
+        platformDetails,
+        payload: type,
+      );
+    }
   } catch (e) {
     print("Background Isolate Crash Prevented: $e");
   }

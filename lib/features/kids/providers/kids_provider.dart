@@ -15,6 +15,8 @@ class KidData {
   final String? monthlyFeeDate;
   final String? resultUrl;
   final String? resultFileName;
+  final List<Map<String, dynamic>> feeStructure;
+  final List<Map<String, dynamic>> individualActions;
 
   KidData({
     required this.id,
@@ -29,11 +31,27 @@ class KidData {
     this.monthlyFeeDate,
     this.resultUrl,
     this.resultFileName,
+    this.feeStructure = const [],
+    this.individualActions = const [],
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
       final dynamic wellnessData = map['wellness'];
       final Map<String, dynamic> wellnessMap = wellnessData is Map ? Map<String, dynamic>.from(wellnessData) : <String, dynamic>{};
+
+      List<Map<String, dynamic>> parsedFeeStructure = [];
+      if (map['feeStructure'] is List) {
+        for (var item in map['feeStructure']) {
+          if (item is Map) parsedFeeStructure.add(Map<String, dynamic>.from(item));
+        }
+      }
+
+      List<Map<String, dynamic>> parsedIndividualActions = [];
+      if (map['individualActions'] is List) {
+        for (var item in map['individualActions']) {
+          if (item is Map) parsedIndividualActions.add(Map<String, dynamic>.from(item));
+        }
+      }
 
     return KidData(
       id: id,
@@ -52,6 +70,8 @@ class KidData {
       monthlyFeeDate: map['monthlyFeeDate']?.toString(),
       resultUrl: map['resultCardUrl']?.toString() ?? map['uploadedResultUrl']?.toString(),
       resultFileName: map['resultCardName']?.toString() ?? (map['uploadedResultType'] != null ? 'result.${map['uploadedResultType']}' : 'result_card.pdf'),
+      feeStructure: parsedFeeStructure,
+      individualActions: parsedIndividualActions,
     );
   }
 

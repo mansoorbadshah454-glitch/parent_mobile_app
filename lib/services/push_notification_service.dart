@@ -180,7 +180,6 @@ class PushNotificationService {
         final body = message.notification?.body ?? message.data['body'] ?? '';
         final type = message.data['type'] ?? '';
         final kidId = message.data['kidId'] ?? message.data['studentId'];
-        final studentName = message.data['studentName'] ?? 'your kid';
           
         if (title == 'Notification' && body.isEmpty && type.isEmpty) return; // Prevent empty pings
 
@@ -195,21 +194,7 @@ class PushNotificationService {
 
         bool isEmergency = type == 'alert' && title.contains('Urgent');
 
-        if (resolvedType == 'result') {
-            const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-              'result_alerts', 'Result Alerts',
-              importance: Importance.max, priority: Priority.high,
-            );
-            const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-            PushNotificationService()._localNotificationsPlugin.show(
-              kidId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-              'Result Card Available',
-              'The result card for $studentName is available to download.',
-              notificationDetails,
-              payload: routingPayload,
-            );
-          }
-          showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
+        showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
       });
       
       // Background message tap handler
