@@ -6,10 +6,12 @@ import '../../../../core/providers/parent_data_provider.dart';
 class AcademicPerformanceData {
   final Map<String, double> academicScores;
   final double homeworkAverage;
+  final Map<String, double> homeworkScores;
 
   AcademicPerformanceData({
     required this.academicScores,
     required this.homeworkAverage,
+    required this.homeworkScores,
   });
 }
 
@@ -83,13 +85,16 @@ final academicPerformanceProvider = StreamProvider.family<AcademicPerformanceDat
       }
     }
 
-    // Parse homework scores to calculate average
+    // Parse homework scores to calculate average and get subject-wise data
     final homeworkScoresRaw = List<dynamic>.from(data['homeworkScores'] ?? []);
+    Map<String, double> subjectHwScores = {};
     double totalHw = 0;
     int hwCount = 0;
     for (var item in homeworkScoresRaw) {
       if (item is Map) {
+        final subj = item['subject']?.toString() ?? 'Unknown';
         final score = double.tryParse(item['score']?.toString() ?? '0') ?? 0.0;
+        subjectHwScores[subj] = score;
         totalHw += score;
         hwCount++;
       }
@@ -100,6 +105,7 @@ final academicPerformanceProvider = StreamProvider.family<AcademicPerformanceDat
     yield AcademicPerformanceData(
       academicScores: subjectScores,
       homeworkAverage: homeworkAverage,
+      homeworkScores: subjectHwScores,
     );
   }
 });

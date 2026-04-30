@@ -105,41 +105,49 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
     return _displayedMonth.weekday - 1;
   }
   
-  double get _attendancePercentage {
-    final total = totalPresent + totalAbsent;
-    if (total == 0) return 100.0; // Avoid division by zero if all days are future/weekends
-    return (totalPresent / total) * 100;
-  }
 
-  ({String msg, Color color, IconData icon, String title}) _getAttendanceData(double percentage) {
-    if (percentage >= 95) {
+  ({String msg, Color color, IconData icon, String title}) _getAttendanceData(int presents, int absents) {
+    if (presents == 0 && absents == 0) {
       return (
-        msg: "Exceptional! 🌟 Your child is highly punctual and rarely misses a class. Great consistency!",
-        color: Colors.green.shade600,
-        icon: Icons.verified_rounded,
-        title: "Excellent Attendance",
+        msg: "No attendance recorded yet. 📅 Attendance data for this month will appear here once marked by the teacher.",
+        color: Colors.blue.shade500,
+        icon: Icons.calendar_month_rounded,
+        title: "No Data",
       );
-    } else if (percentage >= 80) {
+    } else if (absents > 4) {
       return (
-        msg: "Good Attendance! 😊 Your child maintains a very healthy attendance record.",
-        color: Colors.teal.shade500,
-        icon: Icons.thumb_up_rounded,
-        title: "Very Good",
+        msg: "Action Required. 🚨 Your child has been absent for $absents days this month. This level of absenteeism critically impacts their learning. Please contact the administration.",
+        color: Colors.red.shade600,
+        icon: Icons.warning_amber_rounded,
+        title: "Critical Attendance",
       );
-    } else if (percentage >= 60) {
+    } else if (absents > 3) {
       return (
-        msg: "Fair. 🌱 Frequent absences can impact learning flow. Let's aim for better consistency.",
+        msg: "Needs Attention. ⚠️ Your child has accumulated $absents absences against $presents presents. Please ensure they attend classes regularly to avoid falling behind.",
+        color: Colors.deepOrange.shade500,
+        icon: Icons.error_outline_rounded,
+        title: "High Absenteeism",
+      );
+    } else if (absents > 1) {
+      return (
+        msg: "Fair. 🌱 Your child has $absents absences this month. While $presents days of attendance is good, reducing absences will help maintain their academic flow.",
         color: Colors.orange.shade500,
         icon: Icons.info_outline_rounded,
         title: "Needs Improvement",
       );
-    } else {
-      // User specified red for poor attendance
+    } else if (absents == 1) {
       return (
-        msg: "Needs Attention. 🚨 Significant absences have been recorded. Punctuality is key to success.",
-        color: Colors.red.shade600,
-        icon: Icons.warning_amber_rounded,
-        title: "Low Attendance",
+        msg: "Good Attendance! 😊 Your child has only missed 1 day out of ${presents + absents} tracked days. Keep up the good consistency.",
+        color: Colors.teal.shade500,
+        icon: Icons.thumb_up_rounded,
+        title: "Very Good",
+      );
+    } else {
+      return (
+        msg: "Exceptional! 🌟 Your child has perfect attendance with $presents presents so far this month. We highly appreciate this dedication!",
+        color: Colors.green.shade600,
+        icon: Icons.verified_rounded,
+        title: "Excellent Attendance",
       );
     }
   }
@@ -171,7 +179,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
   @override
   Widget build(BuildContext context) {
     final lang = ref.watch(languageProvider);
-    final badgeData = _getAttendanceData(_attendancePercentage);
+    final badgeData = _getAttendanceData(totalPresent, totalAbsent);
     final daysInMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 0).day;
     final totalCells = _firstDayOffset + daysInMonth;
 

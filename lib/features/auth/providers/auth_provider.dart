@@ -51,6 +51,7 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
         await storage.write(key: 'saved_email', value: email);
         await storage.write(key: 'saved_password', value: password);
         await storage.write(key: 'saved_school_id', value: schoolId);
+        await storage.write(key: 'auto_login', value: 'true');
       }
 
       state = const AsyncValue.data(null);
@@ -62,6 +63,10 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
   Future<void> logout() async {
     state = const AsyncValue.loading();
     try {
+      const storage = flutter_secure_storage.FlutterSecureStorage(
+        aOptions: flutter_secure_storage.AndroidOptions(encryptedSharedPreferences: true)
+      );
+      await storage.write(key: 'auto_login', value: 'false');
       await _authService.signOut();
       state = const AsyncValue.data(null);
     } catch (e, st) {

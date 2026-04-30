@@ -30,48 +30,129 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
     });
   }
   
-  // Badge logic mapping natively using Records Feature in Dart 3!
-  ({String msg, Color color, IconData icon, String title}) _getScoreData(double score, String lang) {
-    if (score >= 90) {
+  ({String msg, Color color, IconData icon, String title}) _getAcademicBadgeData(Map<String, double> scores, double average) {
+    String highestSubj = scores.keys.isNotEmpty ? scores.entries.reduce((a, b) => a.value > b.value ? a : b).key : 'All Subjects';
+    String lowestSubj = scores.keys.isNotEmpty ? scores.entries.reduce((a, b) => a.value < b.value ? a : b).key : 'All Subjects';
+    double highestScore = scores.isNotEmpty ? scores[highestSubj] ?? 0 : average;
+    double lowestScore = scores.isNotEmpty ? scores[lowestSubj] ?? 0 : average;
+
+    if (average >= 90) {
       return (
-        msg: "Outstanding! 🎉 Your child is performing exceptionally well in both academics and homework. We are proud of their progress!",
+        msg: "Exceptional performance! 🎉 Your child demonstrates outstanding academic excellence, particularly in $highestSubj (${highestScore.toInt()}%).",
         color: Colors.green.shade600,
         icon: Icons.star_rounded,
-        title: "Excellent Standing",
+        title: "Distinction",
       );
-    } else if (score >= 80) {
+    } else if (average >= 80) {
       return (
-        msg: "Excellent work! 🌟 Your child is showing great dedication. Keep encouraging them to maintain this high standard.",
+        msg: "Excellent progress! 🌟 Consistent high academic standards observed, with notable proficiency in $highestSubj (${highestScore.toInt()}%).",
         color: Colors.teal.shade500,
+        icon: Icons.workspace_premium_rounded,
+        title: "Excellent",
+      );
+    } else if (average >= 70) {
+      return (
+        msg: "Very good standing. 👍 A strong academic record overall. Maintaining focus on $lowestSubj (${lowestScore.toInt()}%) will further improve their grade.",
+        color: ThemeColors.primaryPurple,
         icon: Icons.thumb_up_rounded,
         title: "Very Good",
       );
-    } else if (score >= 70) {
+    } else if (average >= 60) {
       return (
-        msg: "Doing Good! 👍 Your child is on the right track. A little extra focus could help them reach the top scores!",
-        color: ThemeColors.primaryPurple,
-        icon: Icons.check_circle_rounded,
-        title: "Good Progress",
+        msg: "Good performance. 📚 Core concepts are clear, showing strength in $highestSubj. Additional revision for $lowestSubj is recommended.",
+        color: Colors.blue.shade500,
+        icon: Icons.check_circle_outline_rounded,
+        title: "Good",
       );
-    } else if (score >= 60) {
+    } else if (average >= 50) {
       return (
-        msg: "Fair performance. 📚 Your child's basics are clear, but allocating more review time for homework will yield better results.",
+        msg: "Satisfactory progress. 📊 Academic results meet basic expectations. Dedicated study time for $lowestSubj (${lowestScore.toInt()}%) is advised.",
         color: Colors.orange.shade500,
-        icon: Icons.menu_book_rounded,
-        title: "Fair",
+        icon: Icons.trending_flat_rounded,
+        title: "Satisfactory",
       );
-    } else if (score >= 50) {
+    } else if (average >= 40) {
       return (
-        msg: "Needs attention. ⚠️ Your child is scoring below average. Let's work together to identify areas where they need help.",
-        color: Colors.deepOrange.shade500,
+        msg: "Needs improvement. ⚠️ Below average performance detected. Guided support is necessary to address weaknesses in $lowestSubj (${lowestScore.toInt()}%).",
+        color: Colors.deepOrange.shade600,
         icon: Icons.warning_rounded,
-        title: "Needs Attention",
+        title: "Needs Improvement",
+      );
+    } else if (average >= 30) {
+      return (
+        msg: "Poor academic standing. 📉 Significant difficulties observed. Please consult with the teacher regarding $lowestSubj (${lowestScore.toInt()}%).",
+        color: Colors.red.shade500,
+        icon: Icons.error_outline_rounded,
+        title: "Poor Performance",
       );
     } else {
       return (
-        msg: "Action required. 🚨 We've noticed a drop in performance. Please arrange a meeting with the teachers so we can support your child better.",
-        color: Colors.red.shade600,
+        msg: "Critical attention required. 🚨 Substantial academic intervention is urgently needed. Kindly schedule a meeting with the administration.",
+        color: Colors.red.shade900,
         icon: Icons.error_rounded,
+        title: "Action Required",
+      );
+    }
+  }
+
+  ({String msg, Color color, IconData icon, String title}) _getHomeworkBadgeData(Map<String, double> scores, double average) {
+    String highestSubj = scores.keys.isNotEmpty ? scores.entries.reduce((a, b) => a.value > b.value ? a : b).key : 'All Subjects';
+    String lowestSubj = scores.keys.isNotEmpty ? scores.entries.reduce((a, b) => a.value < b.value ? a : b).key : 'All Subjects';
+
+    if (average >= 90) {
+      return (
+        msg: "Exceptional consistency! 📝 All assignments are submitted on time, showing great responsibility, especially in $highestSubj.",
+        color: Colors.green.shade600,
+        icon: Icons.assignment_turned_in_rounded,
+        title: "Distinction",
+      );
+    } else if (average >= 80) {
+      return (
+        msg: "Excellent completion rate! 🎒 Highly consistent with daily tasks, demonstrating a strong work ethic.",
+        color: Colors.teal.shade500,
+        icon: Icons.assignment_rounded,
+        title: "Excellent",
+      );
+    } else if (average >= 70) {
+      return (
+        msg: "Very good consistency. 📓 Most homework is completed effectively. Please ensure $lowestSubj assignments are not overlooked.",
+        color: ThemeColors.primaryPurple,
+        icon: Icons.menu_book_rounded,
+        title: "Very Good",
+      );
+    } else if (average >= 60) {
+      return (
+        msg: "Good adherence. ⏱️ Homework is generally submitted. Monitoring $lowestSubj tasks will help maintain regularity.",
+        color: Colors.blue.shade500,
+        icon: Icons.task_alt_rounded,
+        title: "Good",
+      );
+    } else if (average >= 50) {
+      return (
+        msg: "Satisfactory completion. 📋 Assignments are partially met. Regular checks on $lowestSubj homework are recommended.",
+        color: Colors.orange.shade500,
+        icon: Icons.pending_actions_rounded,
+        title: "Satisfactory",
+      );
+    } else if (average >= 40) {
+      return (
+        msg: "Needs attention. ⚠️ Multiple missing assignments noted. Increased parental supervision is advised, particularly for $lowestSubj.",
+        color: Colors.deepOrange.shade600,
+        icon: Icons.assignment_late_rounded,
+        title: "Needs Attention",
+      );
+    } else if (average >= 30) {
+      return (
+        msg: "Poor homework record. 📉 Consistency is severely lacking. Immediate focus is required to address missing tasks in $lowestSubj.",
+        color: Colors.red.shade500,
+        icon: Icons.assignment_returned_rounded,
+        title: "Poor Consistency",
+      );
+    } else {
+      return (
+        msg: "Action required. 🚨 Chronic failure to submit homework. Urgent parental intervention is necessary.",
+        color: Colors.red.shade900,
+        icon: Icons.warning_amber_rounded,
         title: "Action Required",
       );
     }
@@ -98,8 +179,8 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
           final homeworkScore = data.homeworkAverage;
 
           final double averageAcademic = subjectScores.values.reduce((a, b) => a + b) / subjectScores.length;
-          final double overallScore = (averageAcademic * 0.6) + (homeworkScore * 0.4);
-          final badgeData = _getScoreData(overallScore, lang);
+          final academicBadgeData = _getAcademicBadgeData(subjectScores, averageAcademic);
+          final homeworkBadgeData = _getHomeworkBadgeData(data.homeworkScores, homeworkScore);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -109,16 +190,16 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
                 _buildSectionTitle(TranslationHelper.translate("Academic Performance", lang), lang),
                 const SizedBox(height: 16),
                 _buildAcademicBarChart(subjectScores),
+                const SizedBox(height: 16),
+                _buildInfoBadge(academicBadgeData, lang),
                 
                 const SizedBox(height: 32),
                 _buildSectionTitle(TranslationHelper.translate("Homework Completion", lang), lang),
                 const SizedBox(height: 16),
                 _buildHomeworkChart(homeworkScore),
-                
-                const SizedBox(height: 32),
-                _buildSectionTitle(TranslationHelper.translate("Progress Insight", lang), lang),
                 const SizedBox(height: 16),
-                _buildInfoBadge(badgeData, lang),
+                _buildInfoBadge(homeworkBadgeData, lang),
+                
                 const SizedBox(height: 24),
               ],
             ),

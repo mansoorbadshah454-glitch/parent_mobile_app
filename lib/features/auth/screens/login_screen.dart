@@ -36,6 +36,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final savedEmail = await _storage.read(key: 'saved_email');
     final savedPassword = await _storage.read(key: 'saved_password');
     final savedSchoolId = await _storage.read(key: 'saved_school_id');
+    final autoLoginStr = await _storage.read(key: 'auto_login');
+    final autoLogin = autoLoginStr == 'true';
 
     if (savedEmail != null && savedPassword != null && savedSchoolId != null) {
       if (mounted) {
@@ -45,6 +47,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _schoolIdController.text = savedSchoolId;
           _hasSavedCredentials = true;
         });
+
+        if (autoLogin) {
+          ref.read(authControllerProvider.notifier).login(
+            savedSchoolId,
+            savedEmail,
+            savedPassword,
+          );
+        }
       }
     }
   }
@@ -98,8 +108,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
       
+      String rawSchoolId = _schoolIdController.text.trim();
+      // If user typed only numbers (e.g., "6257"), format it as "SCHOOL_6257"
+      if (RegExp(r'^\d+$').hasMatch(rawSchoolId)) {
+        rawSchoolId = 'SCHOOL_$rawSchoolId';
+      }
+
       ref.read(authControllerProvider.notifier).login(
-        _schoolIdController.text.trim(),
+        rawSchoolId,
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
