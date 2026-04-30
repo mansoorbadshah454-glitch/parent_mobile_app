@@ -17,15 +17,20 @@ class NewsScreen extends ConsumerWidget {
           if (posts.isEmpty) {
             return const Center(child: Text('No announcements yet.'));
           }
-          return ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(top: 8, bottom: 100),
-            itemCount: posts.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final post = posts[index];
-              return ParentNewsPostCard(post: post);
+          return RefreshIndicator(
+            onRefresh: () async {
+              return ref.refresh(newsProvider.future);
             },
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 8, bottom: 100),
+              itemCount: posts.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final post = posts[index];
+                return ParentNewsPostCard(post: post);
+              },
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

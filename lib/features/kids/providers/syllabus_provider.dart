@@ -60,18 +60,16 @@ final classSubjectsProvider = FutureProvider.family<List<String>, SyllabusArgs>(
 
 typedef SubjectChaptersArgs = ({String classId, String className, String subject});
 
-// Provider 2: Streams the chapters for a specific subject
-final subjectChaptersStreamProvider = StreamProvider.family<List<Map<String, dynamic>>, SubjectChaptersArgs>((ref, args) async* {
+// Provider 2: Gets the chapters for a specific subject
+final subjectChaptersProvider = FutureProvider.family<List<Map<String, dynamic>>, SubjectChaptersArgs>((ref, args) async {
   final parentDataAsync = ref.watch(parentDataProvider);
   if (parentDataAsync.value == null) {
-    yield [];
-    return;
+    return [];
   }
 
   final schoolId = parentDataAsync.value!.schoolId;
   if (schoolId.isEmpty) {
-    yield [];
-    return;
+    return [];
   }
 
   String resolvedClassId = args.classId;
@@ -96,11 +94,10 @@ final subjectChaptersStreamProvider = StreamProvider.family<List<Map<String, dyn
   }
 
   if (resolvedClassId.isEmpty) {
-    yield [];
-    return;
+    return [];
   }
 
-  yield* FirebaseFirestore.instance
+  final snapshot = await FirebaseFirestore.instance
       .collection('schools')
       .doc(schoolId)
       .collection('classes')
@@ -109,8 +106,7 @@ final subjectChaptersStreamProvider = StreamProvider.family<List<Map<String, dyn
       .doc(args.subject)
       .collection('chapters')
       .where('status', isEqualTo: 'In Progress')
-      .snapshots()
-      .map((snapshot) {
-    return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
-  });
+      .get();
+      
+  return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
 });

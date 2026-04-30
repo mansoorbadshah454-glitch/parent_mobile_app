@@ -66,10 +66,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   
-  // Enable aggressive offline persistence
+  // Enable bounded offline persistence to prevent storage bloat
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    cacheSizeBytes: 100 * 1024 * 1024, // Enterprise Scalability: Cap at 100MB
   );
   print("💽 [Main] Firestore Offline Persistence Enabled");
   

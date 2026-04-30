@@ -219,6 +219,10 @@ class PushNotificationService {
 
   Future<void> saveTokenToDatabase(String token, String schoolId, String uid) async {
     try {
+      // FCM Topic Subscription for scalable broadcasts
+      await FirebaseMessaging.instance.subscribeToTopic('${schoolId}_parents');
+      await FirebaseMessaging.instance.subscribeToTopic('${schoolId}_all');
+
       await FirebaseFirestore.instance
         .collection('schools')
         .doc(schoolId)
@@ -227,9 +231,9 @@ class PushNotificationService {
         .set({
           'fcmToken': FieldValue.arrayUnion([token]),
         }, SetOptions(merge: true));
-        print('FCM Token saved successfully for Parent');
+        print('FCM Token and Topics saved successfully for Parent');
     } catch (e) {
-      print('Error saving FCM token for Parent: $e');
+      print('Error saving FCM token/topics for Parent: $e');
     }
   }
 }

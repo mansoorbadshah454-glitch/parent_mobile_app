@@ -239,6 +239,16 @@ class TranslationHelper {
       return translatedText;
     }
 
+    // Pattern: Scheduled Test Message
+    // "Consistent practice builds confidence. Support {Name} by creating a distraction-free study space for this test!"
+    final scheduledTestPattern = RegExp(r"^Consistent practice builds confidence\. Support (.*?) by creating a distraction-free study space for this test!?$", caseSensitive: false);
+    if (scheduledTestPattern.hasMatch(translatedText)) {
+      final match = scheduledTestPattern.firstMatch(translatedText)!;
+      final name = _translateNouns(match.group(1) ?? '');
+      translatedText = "مسلسل مشق اعتماد پیدا کرتی ہے۔ اس ٹیسٹ کے لیے خلفشار سے پاک مطالعہ کی جگہ بنا کر $name کی مدد کریں!";
+      return translatedText;
+    }
+
     // 2. Check if the whole string matches (case insensitive exact match)
     for (var entry in _dictionary.entries) {
       if (entry.key.toLowerCase() == translatedText.toLowerCase()) {

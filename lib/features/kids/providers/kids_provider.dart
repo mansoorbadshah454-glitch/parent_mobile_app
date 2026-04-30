@@ -17,6 +17,7 @@ class KidData {
   final String? resultFileName;
   final List<Map<String, dynamic>> feeStructure;
   final List<Map<String, dynamic>> individualActions;
+  final Map<String, dynamic>? activeLeave;
 
   KidData({
     required this.id,
@@ -33,6 +34,7 @@ class KidData {
     this.resultFileName,
     this.feeStructure = const [],
     this.individualActions = const [],
+    this.activeLeave,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -51,6 +53,11 @@ class KidData {
         for (var item in map['individualActions']) {
           if (item is Map) parsedIndividualActions.add(Map<String, dynamic>.from(item));
         }
+      }
+
+      Map<String, dynamic>? parsedActiveLeave;
+      if (map['activeLeave'] is Map) {
+        parsedActiveLeave = Map<String, dynamic>.from(map['activeLeave']);
       }
 
     return KidData(
@@ -72,6 +79,7 @@ class KidData {
       resultFileName: map['resultCardName']?.toString() ?? (map['uploadedResultType'] != null ? 'result.${map['uploadedResultType']}' : 'result_card.pdf'),
       feeStructure: parsedFeeStructure,
       individualActions: parsedIndividualActions,
+      activeLeave: parsedActiveLeave,
     );
   }
 

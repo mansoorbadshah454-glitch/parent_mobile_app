@@ -4,6 +4,7 @@ import '../../../core/theme/theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/utils/translation_helper.dart';
+import '../screens/apply_leave_screen.dart';
 
 class AttendanceTabContent extends ConsumerStatefulWidget {
   final KidData kid;
@@ -306,7 +307,81 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
             ),
           ),
           
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          
+          // Apply Leave Banner
+          if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'pending')
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
+                    child: Icon(Icons.access_time_rounded, color: Colors.orange.shade700),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Leave Pending Review', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        SizedBox(height: 4),
+                        Text('Your recent leave application is being reviewed by the teacher.', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            InkWell(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => ApplyLeaveScreen(kid: widget.kid)
+                ));
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [ThemeColors.primaryPurple, ThemeColors.deepPurple]),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: ThemeColors.primaryPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                      child: const Icon(Icons.edit_document, color: Colors.white),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Apply for Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          SizedBox(height: 4),
+                          Text('Submit a sick leave or emergency application', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.white),
+                  ],
+                ),
+              ),
+            ),
+
           Text(
             TranslationHelper.translate("Monthly Summary", lang),
             style: TranslationHelper.getTextStyle(

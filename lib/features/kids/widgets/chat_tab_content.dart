@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,10 +27,14 @@ class _AudioMessageWidgetState extends State<_AudioMessageWidget> {
   Duration _position = Duration.zero;
   bool _isLoading = false;
 
+  late final StreamSubscription _playerStateSubscription;
+  late final StreamSubscription _durationSubscription;
+  late final StreamSubscription _positionSubscription;
+
   @override
   void initState() {
     super.initState();
-    _audioPlayer.onPlayerStateChanged.listen((state) {
+    _playerStateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) {
         setState(() {
           _isPlaying = state == PlayerState.playing;
@@ -37,11 +42,11 @@ class _AudioMessageWidgetState extends State<_AudioMessageWidget> {
       }
     });
 
-    _audioPlayer.onDurationChanged.listen((newDuration) {
+    _durationSubscription = _audioPlayer.onDurationChanged.listen((newDuration) {
       if (mounted) setState(() => _duration = newDuration);
     });
 
-    _audioPlayer.onPositionChanged.listen((newPosition) {
+    _positionSubscription = _audioPlayer.onPositionChanged.listen((newPosition) {
       if (mounted) setState(() => _position = newPosition);
     });
     
@@ -59,6 +64,9 @@ class _AudioMessageWidgetState extends State<_AudioMessageWidget> {
 
   @override
   void dispose() {
+    _playerStateSubscription.cancel();
+    _durationSubscription.cancel();
+    _positionSubscription.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }

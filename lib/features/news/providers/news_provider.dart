@@ -51,8 +51,8 @@ class NewsPost {
 
     List<Map<String, dynamic>> mediaList = [];
     if (map['media'] != null) {
-        for(var m in (map['media'] as List)) {
-            mediaList.add(Map<String, dynamic>.from(m as Map));
+        for(var m in (map['media'] as List<dynamic>? ?? [])) {
+            mediaList.add(m as Map<String, dynamic>? ?? <String, dynamic>{});
         }
     } else if (attachmentUrl.isNotEmpty) {
         mediaList.add({
@@ -143,45 +143,41 @@ class HiddenPostsNotifier extends StateNotifier<List<String>> {
   }
 }
 
-final newsProvider = StreamProvider<List<NewsPost>>((ref) async* {
+final newsProvider = FutureProvider<List<NewsPost>>((ref) async {
   final parentDataAsync = ref.watch(parentDataProvider);
   final kidsAsync = ref.watch(kidsProvider);
   final hiddenPosts = ref.watch(hiddenPostsProvider);
 
   if (parentDataAsync.value == null || kidsAsync.value == null) {
-    yield [];
-    return;
+    return [];
   }
 
   final schoolId = parentDataAsync.value!.schoolId;
   final kidsClasses = kidsAsync.value!.map((k) => k.className).toSet();
 
   if (schoolId.isEmpty) {
-    yield [];
-    return;
+    return [];
   }
 
-  final postsStream = FirebaseFirestore.instance
+  final snapshot = await FirebaseFirestore.instance
       .collection('schools')
       .doc(schoolId)
       .collection('posts')
       .orderBy('timestamp', descending: true)
-      .snapshots();
+      .get();
 
-  await for (final snapshot in postsStream) {
-    final allPosts = snapshot.docs.map((doc) => NewsPost.fromMap(doc.data(), doc.id)).toList();
-    
-    // Filter by audience
-    final filteredPosts = allPosts.where((post) {
-      if (hiddenPosts.contains(post.id)) return false;
+  final allPosts = snapshot.docs.map((doc) => NewsPost.fromMap(doc.data(), doc.id)).toList();
+  
+  // Filter by audience
+  final filteredPosts = allPosts.where((post) {
+    if (hiddenPosts.contains(post.id)) return false;
 
-      if (post.audience == 'all' || post.audience.isEmpty) return true;
-      if (post.audience == 'class') {
-        return kidsClasses.contains(post.targetClassName);
-      }
-      return false;
-    }).toList();
+    if (post.audience == 'all' || post.audience.isEmpty) return true;
+    if (post.audience == 'class') {
+      return kidsClasses.contains(post.targetClassName);
+    }
+    return false;
+  }).toList();
 
-    yield filteredPosts;
-  }
+  return filteredPosts;
 });

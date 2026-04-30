@@ -25,13 +25,19 @@ class SyllabusTabContent extends ConsumerWidget {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          itemCount: subjects.length,
-          itemBuilder: (context, index) {
-            final subject = subjects[index];
-            return SubjectStreamCard(kid: kid, subject: subject);
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(classSubjectsProvider((classId: kid.classId, className: kid.className)));
           },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            itemCount: subjects.length,
+            itemBuilder: (context, index) {
+              final subject = subjects[index];
+              return SubjectStreamCard(kid: kid, subject: subject);
+            },
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator(color: ThemeColors.primaryPurple)),
@@ -74,7 +80,7 @@ class SubjectStreamCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final chaptersAsync = ref.watch(
-      subjectChaptersStreamProvider((classId: kid.classId, className: kid.className, subject: subject))
+      subjectChaptersProvider((classId: kid.classId, className: kid.className, subject: subject))
     );
 
     return chaptersAsync.when(

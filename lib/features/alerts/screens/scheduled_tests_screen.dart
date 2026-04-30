@@ -299,12 +299,12 @@ class _ScheduledTestsScreenState extends ConsumerState<ScheduledTestsScreen> {
                         Expanded(
                           child: Text(
                             TranslationHelper.translate(personalizedMessage, lang),
-                            style: TextStyle(
+                            style: TranslationHelper.getTextStyle(
+                              lang,
                               fontSize: 14,
                               color: Colors.blue[800],
                               height: 1.4,
-                              fontStyle: FontStyle.italic,
-                            ),
+                            ).copyWith(fontStyle: isUrdu ? FontStyle.normal : FontStyle.italic),
                           ),
                         ),
                       ],
