@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../providers/kids_provider.dart';
 import '../providers/syllabus_provider.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../core/providers/language_provider.dart';
+import '../../../core/utils/translation_helper.dart';
 
 class SyllabusTabContent extends ConsumerWidget {
   final KidData kid;
@@ -13,14 +15,16 @@ class SyllabusTabContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subjectsAsync = ref.watch(classSubjectsProvider((classId: kid.classId, className: kid.className)));
+    final lang = ref.watch(languageProvider);
 
     return subjectsAsync.when(
       data: (subjects) {
         if (subjects.isEmpty) {
           return Center(
             child: Text(
-              "No syllabus data available.",
-              style: GoogleFonts.montserrat(color: Colors.grey, fontSize: 16),
+              TranslationHelper.translate("No syllabus data available.", lang),
+              style: TranslationHelper.getTextStyle(lang, color: Colors.grey, fontSize: 16)
+                  .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null),
             ),
           );
         }
@@ -35,7 +39,7 @@ class SyllabusTabContent extends ConsumerWidget {
             itemCount: subjects.length,
             itemBuilder: (context, index) {
               final subject = subjects[index];
-              return SubjectStreamCard(kid: kid, subject: subject);
+              return SubjectStreamCard(kid: kid, subject: subject, lang: lang);
             },
           ),
         );
@@ -43,8 +47,9 @@ class SyllabusTabContent extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator(color: ThemeColors.primaryPurple)),
       error: (e, st) => Center(
         child: Text(
-          "Failed to load syllabus.",
-          style: GoogleFonts.montserrat(color: Colors.red),
+          TranslationHelper.translate("Failed to load syllabus.", lang),
+          style: TranslationHelper.getTextStyle(lang, color: Colors.red)
+              .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null),
         ),
       ),
     );
@@ -54,11 +59,13 @@ class SyllabusTabContent extends ConsumerWidget {
 class SubjectStreamCard extends ConsumerWidget {
   final KidData kid;
   final String subject;
+  final String lang;
 
   const SubjectStreamCard({
     Key? key,
     required this.kid,
     required this.subject,
+    required this.lang,
   }) : super(key: key);
 
   String _getSubjectIcon(String subjectName) {
@@ -123,21 +130,15 @@ class SubjectStreamCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          subject,
-                          style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: ThemeColors.primaryText,
-                          ),
+                          TranslationHelper.translate(subject, lang),
+                          style: TranslationHelper.getTextStyle(lang, fontWeight: FontWeight.bold, fontSize: 16, color: ThemeColors.primaryText)
+                              .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null),
                         ),
                         if (hasInProgress)
                           Text(
-                            "Active Chapter Available",
-                            style: GoogleFonts.montserrat(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                              color: ThemeColors.primaryPurple,
-                            ),
+                            TranslationHelper.translate("Active Chapter Available", lang),
+                            style: TranslationHelper.getTextStyle(lang, fontWeight: FontWeight.w500, fontSize: 12, color: ThemeColors.primaryPurple)
+                                .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null),
                           ),
                       ],
                     ),
@@ -170,33 +171,24 @@ class SubjectStreamCard extends ConsumerWidget {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        "Currently Teaching in School",
-                                        style: GoogleFonts.montserrat(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: ThemeColors.primaryPurple,
-                                        ),
+                                        TranslationHelper.translate("Currently Teaching in School", lang),
+                                        style: TranslationHelper.getTextStyle(lang, fontWeight: FontWeight.w700, fontSize: 14, color: ThemeColors.primaryPurple)
+                                            .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null, height: 1.2),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  "Chapter: $chapterTitle",
-                                  style: GoogleFonts.montserrat(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: ThemeColors.primaryText,
-                                  ),
+                                  TranslationHelper.translate("Chapter: $chapterTitle", lang),
+                                  style: TranslationHelper.getTextStyle(lang, fontWeight: FontWeight.bold, fontSize: 16, color: ThemeColors.primaryText)
+                                      .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null, height: 1.2),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  "Our faculty is currently focusing on this chapter, ensuring a deep understanding of core concepts. We highly encourage you to discuss these topics with your child at home to reinforce their learning.",
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 13,
-                                    height: 1.5,
-                                    color: Colors.black87,
-                                  ),
+                                  TranslationHelper.translate("Our faculty is currently focusing on this chapter, ensuring a deep understanding of core concepts. We highly encourage you to discuss these topics with your child at home to reinforce their learning.", lang),
+                                  style: TranslationHelper.getTextStyle(lang, fontSize: 13, color: Colors.black87, height: 1.5)
+                                      .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null),
                                 ),
                               ],
                             ),
@@ -212,12 +204,9 @@ class SubjectStreamCard extends ConsumerWidget {
                           border: Border.all(color: Colors.grey.withOpacity(0.2)),
                         ),
                         child: Text(
-                          "No chapter is currently marked as 'In Progress' for this subject.",
-                          style: GoogleFonts.montserrat(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
+                          TranslationHelper.translate("No chapter is currently marked as 'In Progress' for this subject.", lang),
+                          style: TranslationHelper.getTextStyle(lang, fontSize: 13, color: Colors.grey[600])
+                              .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null, fontStyle: FontStyle.italic),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -235,8 +224,9 @@ class SubjectStreamCard extends ConsumerWidget {
         padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Text(
-            "Failed to load chapters.",
-            style: GoogleFonts.montserrat(color: Colors.red),
+            TranslationHelper.translate("Failed to load chapters.", lang),
+            style: TranslationHelper.getTextStyle(lang, color: Colors.red)
+                .copyWith(fontFamily: lang != 'ur' ? GoogleFonts.montserrat().fontFamily : null),
           ),
         ),
       ),

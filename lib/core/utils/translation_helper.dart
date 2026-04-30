@@ -29,6 +29,10 @@ class TranslationHelper {
     "Excellent Attendance": "بہترین حاضری",
     "Needs Improvement": "بہتری کی ضرورت ہے",
     "Low Attendance": "کم حاضری",
+    "No Data": "کوئی ڈیٹا نہیں",
+    "Critical Attendance": "انتہائی کم حاضری",
+    "High Absenteeism": "زیادہ غیر حاضری",
+    "No attendance recorded yet. 📅 Attendance data for this month will appear here once marked by the teacher.": "ابھی تک حاضری ریکارڈ نہیں کی گئی۔ 📅 اس مہینے کی حاضری کا ڈیٹا استاد کی طرف سے نشان زد ہونے کے بعد یہاں ظاہر ہوگا۔",
 
     "Exceptional! 🌟 Your child is highly punctual and rarely misses a class. Great consistency!":
         "شاندار! 🌟 آپ کا بچہ انتہائی وقت کا پابند ہے اور شاذ و نادر ہی کوئی کلاس چھوڑتا ہے۔ بہترین تسلسل!",
@@ -105,6 +109,21 @@ class TranslationHelper {
     "Bad": "خراب",
     "Payment Reliability": "ادائیگی کی ساکھ",
     "Based on past 6 months of fee payments.": "پچھلے 6 ماہ کی فیس ادائیگیوں پر مبنی۔",
+    // --- New Academic/Homework Titles ---
+    "Distinction": "امتیازی کارکردگی",
+    "Satisfactory": "تسلی بخش",
+    "Poor Performance": "ناقص کارکردگی",
+    "Poor Consistency": "ناقص تسلسل",
+    
+    // --- Syllabus Badges ---
+    "Active Chapter Available": "موجودہ باب دستیاب ہے",
+    "Currently Teaching in School": "اس وقت سکول میں پڑھایا جا رہا ہے",
+    "Our faculty is currently focusing on this chapter, ensuring a deep understanding of core concepts. We highly encourage you to discuss these topics with your child at home to reinforce their learning.": "ہماری فیکلٹی اس وقت اس باب پر توجہ دے رہی ہے، تاکہ بنیادی تصورات کی گہری سمجھ کو یقینی بنایا جا سکے۔ ہم آپ کی بھرپور حوصلہ افزائی کرتے ہیں کہ اپنے بچے کے ساتھ گھر پر ان موضوعات پر بات کریں تاکہ ان کی سیکھنے کی صلاحیت مزید بہتر ہو۔",
+    "No chapter is currently marked as 'In Progress' for this subject.": "اس مضمون کے لیے فی الحال کوئی باب 'جاری ہے' کے طور پر نشان زد نہیں ہے۔",
+    "No syllabus data available.": "نصاب کا کوئی ڈیٹا دستیاب نہیں ہے۔",
+    "Failed to load syllabus.": "نصاب لوڈ کرنے میں ناکام۔",
+    "Failed to load chapters.": "ابواب لوڈ کرنے میں ناکام۔",
+
     // --- Dynamic Prefix / Suffix Replacements ---
     "😊 Great Habits & Well-being!": "😊 بہترین عادات اور فلاح و بہبود!",
     "📊 Performance Update": "📊 کارکردگی کی تازہ کاری",
@@ -247,6 +266,160 @@ class TranslationHelper {
       final name = _translateNouns(match.group(1) ?? '');
       translatedText = "مسلسل مشق اعتماد پیدا کرتی ہے۔ اس ٹیسٹ کے لیے خلفشار سے پاک مطالعہ کی جگہ بنا کر $name کی مدد کریں!";
       return translatedText;
+    }
+
+    // Pattern: Academic Badges
+    final acadDistinction = RegExp(r"^Exceptional performance! 🎉 Your child demonstrates outstanding academic excellence, particularly in (.*?) \((.*?)\%\)\.?$", caseSensitive: false);
+    if (acadDistinction.hasMatch(translatedText)) {
+      final match = acadDistinction.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      final score = match.group(2) ?? '';
+      return "شاندار کارکردگی! 🎉 آپ کا بچہ غیر معمولی تعلیمی قابلیت کا مظاہرہ کر رہا ہے، خاص طور پر $subj ($score%) میں۔";
+    }
+
+    final acadExcellent = RegExp(r"^Excellent progress! 🌟 Consistent high academic standards observed, with notable proficiency in (.*?) \((.*?)\%\)\.?$", caseSensitive: false);
+    if (acadExcellent.hasMatch(translatedText)) {
+      final match = acadExcellent.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      final score = match.group(2) ?? '';
+      return "بہترین ترقی! 🌟 مسلسل اعلیٰ تعلیمی معیار دیکھنے میں آیا ہے، جس میں نمایاں مہارت $subj ($score%) میں ہے۔";
+    }
+
+    final acadVeryGood = RegExp(r"^Very good standing\. 👍 A strong academic record overall\. Maintaining focus on (.*?) \((.*?)\%\) will further improve their grade\.?$", caseSensitive: false);
+    if (acadVeryGood.hasMatch(translatedText)) {
+      final match = acadVeryGood.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      final score = match.group(2) ?? '';
+      return "بہت اچھی کارکردگی۔ 👍 مجموعی طور پر ایک مضبوط تعلیمی ریکارڈ۔ $subj ($score%) پر توجہ برقرار رکھنے سے ان کے گریڈ میں مزید بہتری آئے گی۔";
+    }
+
+    final acadGood = RegExp(r"^Good performance\. 📚 Core concepts are clear, showing strength in (.*?)\. Additional revision for (.*?) is recommended\.?$", caseSensitive: false);
+    if (acadGood.hasMatch(translatedText)) {
+      final match = acadGood.firstMatch(translatedText)!;
+      final highSubj = _translateNouns(match.group(1) ?? '');
+      final lowSubj = _translateNouns(match.group(2) ?? '');
+      return "اچھی کارکردگی۔ 📚 بنیادی تصورات واضح ہیں، جو $highSubj میں مضبوطی ظاہر کرتے ہیں۔ $lowSubj کے لیے اضافی دہرائی کی سفارش کی جاتی ہے۔";
+    }
+
+    final acadSatisfactory = RegExp(r"^Satisfactory progress\. 📊 Academic results meet basic expectations\. Dedicated study time for (.*?) \((.*?)\%\) is advised\.?$", caseSensitive: false);
+    if (acadSatisfactory.hasMatch(translatedText)) {
+      final match = acadSatisfactory.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      final score = match.group(2) ?? '';
+      return "تسلی بخش ترقی۔ 📊 تعلیمی نتائج بنیادی توقعات پر پورا اترتے ہیں۔ $subj ($score%) کے لیے مطالعہ کا وقت مختص کرنے کا مشورہ دیا جاتا ہے۔";
+    }
+
+    final acadNeedsImprovement = RegExp(r"^Needs improvement\. ⚠️ Below average performance detected\. Guided support is necessary to address weaknesses in (.*?) \((.*?)\%\)\.?$", caseSensitive: false);
+    if (acadNeedsImprovement.hasMatch(translatedText)) {
+      final match = acadNeedsImprovement.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      final score = match.group(2) ?? '';
+      return "بہتری کی ضرورت ہے۔ ⚠️ اوسط سے کم کارکردگی نوٹ کی گئی۔ $subj ($score%) میں کمزوریوں کو دور کرنے کے لیے رہنمائی اور مدد ضروری ہے۔";
+    }
+
+    final acadPoor = RegExp(r"^Poor academic standing\. 📉 Significant difficulties observed\. Please consult with the teacher regarding (.*?) \((.*?)\%\)\.?$", caseSensitive: false);
+    if (acadPoor.hasMatch(translatedText)) {
+      final match = acadPoor.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      final score = match.group(2) ?? '';
+      return "ناقص تعلیمی کارکردگی۔ 📉 نمایاں مشکلات دیکھی گئی ہیں۔ براہ کرم $subj ($score%) کے حوالے سے استاد سے مشورہ کریں۔";
+    }
+
+    final acadAction = RegExp(r"^Critical attention required\. 🚨 Substantial academic intervention is urgently needed\. Kindly schedule a meeting with the administration\.?$", caseSensitive: false);
+    if (acadAction.hasMatch(translatedText)) {
+      return "انتہائی توجہ درکار ہے۔ 🚨 فوری طور پر نمایاں تعلیمی مداخلت کی ضرورت ہے۔ براہ کرم انتظامیہ کے ساتھ ملاقات کا وقت طے کریں۔";
+    }
+
+    // Pattern: Homework Badges
+    final hwDistinction = RegExp(r"^Exceptional consistency! 📝 All assignments are submitted on time, showing great responsibility, especially in (.*?)\.?$", caseSensitive: false);
+    if (hwDistinction.hasMatch(translatedText)) {
+      final match = hwDistinction.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      return "شاندار تسلسل! 📝 تمام اسائنمنٹس وقت پر جمع کروائی گئی ہیں، جو کہ زبردست ذمہ داری کو ظاہر کرتی ہے، خاص طور پر $subj میں۔";
+    }
+
+    final hwExcellent = RegExp(r"^Excellent completion rate! 🎒 Highly consistent with daily tasks, demonstrating a strong work ethic\.?$", caseSensitive: false);
+    if (hwExcellent.hasMatch(translatedText)) {
+      return "تکمیل کی بہترین شرح! 🎒 روزمرہ کے کاموں کے ساتھ انتہائی مطابقت، جو کام کے ایک مضبوط اصول کو ظاہر کرتی ہے۔";
+    }
+
+    final hwVeryGood = RegExp(r"^Very good consistency\. 📓 Most homework is completed effectively\. Please ensure (.*?) assignments are not overlooked\.?$", caseSensitive: false);
+    if (hwVeryGood.hasMatch(translatedText)) {
+      final match = hwVeryGood.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      return "بہت اچھا تسلسل۔ 📓 زیادہ تر ہوم ورک مؤثر طریقے سے مکمل کیا گیا ہے۔ براہ کرم یقینی بنائیں کہ $subj کی اسائنمنٹس کو نظر انداز نہ کیا جائے۔";
+    }
+
+    final hwGood = RegExp(r"^Good adherence\. ⏱️ Homework is generally submitted\. Monitoring (.*?) tasks will help maintain regularity\.?$", caseSensitive: false);
+    if (hwGood.hasMatch(translatedText)) {
+      final match = hwGood.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      return "اچھی پابندی۔ ⏱️ ہوم ورک عام طور پر جمع کروایا جاتا ہے۔ $subj کے کاموں کی نگرانی باقاعدگی برقرار رکھنے میں مدد دے گی۔";
+    }
+
+    final hwSatisfactory = RegExp(r"^Satisfactory completion\. 📋 Assignments are partially met\. Regular checks on (.*?) homework are recommended\.?$", caseSensitive: false);
+    if (hwSatisfactory.hasMatch(translatedText)) {
+      final match = hwSatisfactory.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      return "تسلی بخش تکمیل۔ 📋 اسائنمنٹس جزوی طور پر پوری کی گئی ہیں۔ $subj کے ہوم ورک کی باقاعدہ جانچ پڑتال کی سفارش کی جاتی ہے۔";
+    }
+
+    final hwNeedsAttention = RegExp(r"^Needs attention\. ⚠️ Multiple missing assignments noted\. Increased parental supervision is advised, particularly for (.*?)\.?$", caseSensitive: false);
+    if (hwNeedsAttention.hasMatch(translatedText)) {
+      final match = hwNeedsAttention.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      return "توجہ طلب۔ ⚠️ متعدد گمشدہ اسائنمنٹس نوٹ کی گئیں۔ خاص طور پر $subj کے لیے والدین کی نگرانی میں اضافے کا مشورہ دیا جاتا ہے۔";
+    }
+
+    final hwPoor = RegExp(r"^Poor homework record\. 📉 Consistency is severely lacking\. Immediate focus is required to address missing tasks in (.*?)\.?$", caseSensitive: false);
+    if (hwPoor.hasMatch(translatedText)) {
+      final match = hwPoor.firstMatch(translatedText)!;
+      final subj = _translateNouns(match.group(1) ?? '');
+      return "ناقص ہوم ورک کا ریکارڈ۔ 📉 تسلسل کی شدید کمی ہے۔ $subj میں نامکمل کاموں کو دور کرنے کے لیے فوری توجہ درکار ہے۔";
+    }
+
+    final hwAction = RegExp(r"^Action required\. 🚨 Chronic failure to submit homework\. Urgent parental intervention is necessary\.?$", caseSensitive: false);
+    if (hwAction.hasMatch(translatedText)) {
+      return "کارروائی درکار ہے۔ 🚨 ہوم ورک جمع کرانے میں مسلسل ناکامی۔ والدین کی فوری مداخلت ضروری ہے۔";
+    }
+
+    // Pattern: Chapter Name
+    final chapterPattern = RegExp(r"^Chapter: (.*?)$", caseSensitive: false);
+    if (chapterPattern.hasMatch(translatedText)) {
+      final match = chapterPattern.firstMatch(translatedText)!;
+      final chap = match.group(1) ?? '';
+      return "باب: $chap";
+    }
+
+    // Pattern: Attendance Dynamic Badges
+    final attExceptional = RegExp(r"^Exceptional! 🌟 Your child has perfect attendance with (.*?) presents so far this month\. We highly appreciate this dedication!?$", caseSensitive: false);
+    if (attExceptional.hasMatch(translatedText)) {
+      final match = attExceptional.firstMatch(translatedText)!;
+      return "شاندار! 🌟 آپ کے بچے کی حاضری بہترین ہے اور اس ماہ اب تک ${match.group(1)} حاضریاں ہیں۔ ہم اس لگن کی دل کھول کر تعریف کرتے ہیں!";
+    }
+
+    final attGood = RegExp(r"^Good Attendance! 😊 Your child has only missed 1 day out of (.*?) tracked days\. Keep up the good consistency\.?$", caseSensitive: false);
+    if (attGood.hasMatch(translatedText)) {
+      final match = attGood.firstMatch(translatedText)!;
+      return "اچھی حاضری! 😊 آپ کے بچے نے ${match.group(1)} ٹریک کیے گئے دنوں میں سے صرف 1 دن چھٹی کی ہے۔ اس اچھے تسلسل کو برقرار رکھیں۔";
+    }
+
+    final attFair = RegExp(r"^Fair\. 🌱 Your child has (.*?) absences this month\. While (.*?) days of attendance is good, reducing absences will help maintain their academic flow\.?$", caseSensitive: false);
+    if (attFair.hasMatch(translatedText)) {
+      final match = attFair.firstMatch(translatedText)!;
+      return "درمیانہ۔ 🌱 آپ کے بچے کی اس ماہ ${match.group(1)} غیر حاضریاں ہیں۔ اگرچہ ${match.group(2)} دن کی حاضری اچھی ہے، غیر حاضریوں کو کم کرنے سے ان کی تعلیمی روانی برقرار رکھنے میں مدد ملے گی۔";
+    }
+
+    final attNeedsAttention = RegExp(r"^Needs Attention\. ⚠️ Your child has accumulated (.*?) absences against (.*?) presents\. Please ensure they attend classes regularly to avoid falling behind\.?$", caseSensitive: false);
+    if (attNeedsAttention.hasMatch(translatedText)) {
+      final match = attNeedsAttention.firstMatch(translatedText)!;
+      return "توجہ کی ضرورت ہے۔ ⚠️ آپ کے بچے نے ${match.group(2)} حاضریوں کے مقابلے میں ${match.group(1)} غیر حاضریاں جمع کر لی ہیں۔ براہ کرم یقینی بنائیں کہ وہ باقاعدگی سے کلاسز میں شرکت کریں تاکہ وہ پیچھے نہ رہ جائیں۔";
+    }
+
+    final attActionRequired = RegExp(r"^Action Required\. 🚨 Your child has been absent for (.*?) days this month\. This level of absenteeism critically impacts their learning\. Please contact the administration\.?$", caseSensitive: false);
+    if (attActionRequired.hasMatch(translatedText)) {
+      final match = attActionRequired.firstMatch(translatedText)!;
+      return "کارروائی درکار ہے۔ 🚨 آپ کا بچہ اس ماہ ${match.group(1)} دن غیر حاضر رہا ہے۔ غیر حاضری کی یہ سطح ان کے سیکھنے کے عمل کو بری طرح متاثر کرتی ہے۔ براہ کرم انتظامیہ سے رابطہ کریں۔";
     }
 
     // 2. Check if the whole string matches (case insensitive exact match)
