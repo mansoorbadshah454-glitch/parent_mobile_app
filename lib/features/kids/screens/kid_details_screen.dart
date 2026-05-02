@@ -8,6 +8,7 @@ import '../widgets/personality_tab_content.dart';
 import '../widgets/attendance_tab_content.dart';
 import '../widgets/syllabus_tab_content.dart';
 import '../widgets/result_tab_content.dart';
+import '../widgets/tests_reports_tab_content.dart';
 import '../widgets/chat_tab_content.dart';
 import '../../../core/providers/parent_data_provider.dart';
 import '../../../core/theme/theme_colors.dart';
@@ -27,7 +28,8 @@ class KidDetailsScreen extends ConsumerWidget {
     final currentKid = kidsAsyncValue.value?.firstWhere((k) => k.id == kid.id, orElse: () => kid) ?? kid;
 
     return DefaultTabController(
-      length: 6,
+      key: const ValueKey('kid_details_tabs_7'),
+      length: 7,
       initialIndex: initialTabIndex,
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -128,17 +130,18 @@ class KidDetailsScreen extends ConsumerWidget {
             // Menu Buttons (TabBar) with grey background
             Container(
               color: Colors.grey[200], 
-              child: const TabBar(
+              child: TabBar(
                 isScrollable: true,
                 labelColor: ThemeColors.primaryPurple,
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: ThemeColors.primaryPurple,
-                labelStyle: TextStyle(fontWeight: FontWeight.bold),
-                tabs: [
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                tabs: const [
                   Tab(text: 'Academic'),
                   Tab(text: 'Personality'),
                   Tab(text: 'Attendance'),
                   Tab(text: 'Syllabus'),
+                  Tab(text: 'Tests & Reports'),
                   Tab(text: 'Result'),
                   Tab(text: 'Chat'),
                 ],
@@ -153,6 +156,7 @@ class KidDetailsScreen extends ConsumerWidget {
                   PersonalityTabContent(kid: currentKid),
                   AttendanceTabContent(kid: currentKid),
                   SyllabusTabContent(kid: currentKid),
+                  TestsReportsTabContent(kid: currentKid),
                   ResultTabContent(kid: currentKid),
                   ChatTabContent(kid: currentKid),
                 ],

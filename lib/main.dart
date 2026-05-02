@@ -15,9 +15,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
     
     final data = message.data;
-    final title = data['title'] ?? message.notification?.title ?? 'New Notification';
-    final body = data['body'] ?? message.notification?.body ?? 'You have a new update';
-    final type = data['type'] ?? 'info';
+    final title = (data['title'] ?? message.notification?.title ?? 'New Notification').toString();
+    final body = (data['body'] ?? message.notification?.body ?? 'You have a new update').toString();
+    final type = data['type']?.toString() ?? 'info';
     
     // Unpack alertType if this is a generic 'alert' bundle
     final resolvedType = (type == 'alert' && data['alertType'] != null && data['alertType'].toString().isNotEmpty) 
@@ -82,8 +82,13 @@ void main() async {
     final message = await FirebaseMessaging.instance.getInitialMessage();
     if (message != null) {
       Future.delayed(const Duration(milliseconds: 1500), () {
-          final type = message.data['type'];
+        try {
+          final dynamic rawType = message.data['type'];
+          final String? type = rawType?.toString();
           PushNotificationService().routeFromType(type);
+        } catch (e) {
+          print("Error routing initial message: $e");
+        }
       });
     }
   } catch (e) {

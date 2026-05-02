@@ -40,7 +40,11 @@ class PushNotificationService {
     if (launchDetails?.didNotificationLaunchApp ?? false) {
       if (launchDetails?.notificationResponse != null) {
          Future.delayed(const Duration(milliseconds: 1000), () {
-           routeFromType(launchDetails!.notificationResponse!.payload);
+           try {
+             routeFromType(launchDetails!.notificationResponse!.payload);
+           } catch (e) {
+             print('Error routing from terminated state payload: $e');
+           }
          });
       }
     }
@@ -174,42 +178,50 @@ class PushNotificationService {
 
       // Foreground message handler
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-        print('Got a push notification whilst in the foreground!');
+        try {
+          print('Got a push notification whilst in the foreground!');
 
-        final title = message.notification?.title ?? message.data['title'] ?? 'Notification';
-        final body = message.notification?.body ?? message.data['body'] ?? '';
-        final type = message.data['type'] ?? '';
-        final kidId = message.data['kidId'] ?? message.data['studentId'];
-          
-        if (title == 'Notification' && body.isEmpty && type.isEmpty) return; // Prevent empty pings
+          final title = (message.notification?.title ?? message.data['title'] ?? 'Notification').toString();
+          final body = (message.notification?.body ?? message.data['body'] ?? '').toString();
+          final type = (message.data['type'] ?? '').toString();
+          final kidId = message.data['kidId']?.toString() ?? message.data['studentId']?.toString();
+            
+          if (title == 'Notification' && body.isEmpty && type.isEmpty) return; // Prevent empty pings
 
-        final resolvedType = (type == 'alert' && message.data['alertType'] != null && message.data['alertType'].toString().isNotEmpty) 
-            ? message.data['alertType'].toString()
-            : type;
+          final resolvedType = (type == 'alert' && message.data['alertType'] != null && message.data['alertType'].toString().isNotEmpty) 
+              ? message.data['alertType'].toString()
+              : type;
 
-        String routingPayload = (resolvedType == 'result' && kidId != null) ? '$resolvedType:$kidId' : resolvedType;
-          
-        final shouldShow = await NotificationSettingsHelper.shouldShowNotification(resolvedType);
-        if (!shouldShow) return;
+          String routingPayload = (resolvedType == 'result' && kidId != null) ? '$resolvedType:$kidId' : resolvedType;
+            
+          final shouldShow = await NotificationSettingsHelper.shouldShowNotification(resolvedType);
+          if (!shouldShow) return;
 
-        bool isEmergency = type == 'alert' && title.contains('Urgent');
+          bool isEmergency = type == 'alert' && title.contains('Urgent');
 
-        showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
+          showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
+        } catch (e) {
+          print('Error handling foreground message: $e');
+        }
       });
       
       // Background message tap handler
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-         final type = message.data['type'];
-         final kidId = message.data['kidId'] ?? message.data['studentId'];
-         final alertType = message.data['alertType'];
-         
-         final resType = (type == 'alert' && alertType != null) ? alertType.toString() : type;
-         
-         if (resType == 'result' && kidId != null) {
-            routeFromType('$resType:$kidId');
-         } else {
-            routeFromType(resType);
-         }
+        try {
+           final type = message.data['type']?.toString();
+           final kidId = message.data['kidId']?.toString() ?? message.data['studentId']?.toString();
+           final alertType = message.data['alertType'];
+           
+           final resType = (type == 'alert' && alertType != null) ? alertType.toString() : type;
+           
+           if (resType == 'result' && kidId != null) {
+              routeFromType('$resType:$kidId');
+           } else {
+              routeFromType(resType);
+           }
+        } catch (e) {
+          print('Error handling message tap: $e');
+        }
       });
       
     } else {
