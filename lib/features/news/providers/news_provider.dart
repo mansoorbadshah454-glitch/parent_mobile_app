@@ -143,41 +143,40 @@ class HiddenPostsNotifier extends StateNotifier<List<String>> {
   }
 }
 
-final newsProvider = FutureProvider<List<NewsPost>>((ref) async {
+final newsProvider = StreamProvider<List<NewsPost>>((ref) {
   final parentDataAsync = ref.watch(parentDataProvider);
   final kidsAsync = ref.watch(kidsProvider);
   final hiddenPosts = ref.watch(hiddenPostsProvider);
 
   if (parentDataAsync.value == null || kidsAsync.value == null) {
-    return [];
+    return Stream.value([]);
   }
 
   final schoolId = parentDataAsync.value!.schoolId;
   final kidsClasses = kidsAsync.value!.map((k) => k.className).toSet();
 
   if (schoolId.isEmpty) {
-    return [];
+    return Stream.value([]);
   }
 
-  final snapshot = await FirebaseFirestore.instance
+  return FirebaseFirestore.instance
       .collection('schools')
       .doc(schoolId)
       .collection('posts')
       .orderBy('timestamp', descending: true)
-      .get();
+      .snapshots()
+      .map((snapshot) {
+    final allPosts = snapshot.docs.map((doc) => NewsPost.fromMap(doc.data(), doc.id)).toList();
+    
+    // Filter by audience
+    return allPosts.where((post) {
+      if (hiddenPosts.contains(post.id)) return false;
 
-  final allPosts = snapshot.docs.map((doc) => NewsPost.fromMap(doc.data(), doc.id)).toList();
-  
-  // Filter by audience
-  final filteredPosts = allPosts.where((post) {
-    if (hiddenPosts.contains(post.id)) return false;
-
-    if (post.audience == 'all' || post.audience.isEmpty) return true;
-    if (post.audience == 'class') {
-      return kidsClasses.contains(post.targetClassName);
-    }
-    return false;
-  }).toList();
-
-  return filteredPosts;
+      if (post.audience == 'all' || post.audience.isEmpty) return true;
+      if (post.audience == 'class') {
+        return kidsClasses.contains(post.targetClassName);
+      }
+      return false;
+    }).toList();
+  });
 });
