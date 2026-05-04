@@ -17,6 +17,30 @@ final userProvider = Provider<User?>((ref) {
   return ref.watch(authStateProvider).value;
 });
 
+// Actively monitor if the user's account is deleted from the backend
+final userAccessStatusProvider = Provider<void>((ref) {
+  final user = ref.watch(userProvider);
+  if (user == null) return;
+
+  final subscription = FirebaseFirestore.instance
+      .collection('global_users')
+      .doc(user.uid)
+      .snapshots()
+      .listen((snapshot) {
+    if (!snapshot.exists) {
+      print('AuthProvider: User document deleted. Forcing sign out.');
+      ref.read(authControllerProvider.notifier).logout();
+    }
+  }, onError: (error) {
+    print('AuthProvider: Snapshot error (likely permission denied). Forcing sign out.');
+    ref.read(authControllerProvider.notifier).logout();
+  });
+
+  ref.onDispose(() {
+    subscription.cancel();
+  });
+});
+
 class AuthController extends StateNotifier<AsyncValue<void>> {
   final AuthService _authService;
 

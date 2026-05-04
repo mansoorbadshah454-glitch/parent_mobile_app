@@ -14,6 +14,9 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
+  // Watch the user access status to keep the subscription alive
+  ref.watch(userAccessStatusProvider);
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',

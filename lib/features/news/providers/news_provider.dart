@@ -52,7 +52,7 @@ class NewsPost {
     List<Map<String, dynamic>> mediaList = [];
     if (map['media'] != null) {
         for(var m in (map['media'] as List<dynamic>? ?? [])) {
-            mediaList.add(m as Map<String, dynamic>? ?? <String, dynamic>{});
+            mediaList.add(m is Map ? Map<String, dynamic>.from(m) : <String, dynamic>{});
         }
     } else if (attachmentUrl.isNotEmpty) {
         mediaList.add({
@@ -87,36 +87,48 @@ class NewsPost {
 }
 
 Future<void> toggleReaction(String schoolId, String postId, String userId, String reactionType) async {
-  final postRef = FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId);
-  
-  if (reactionType == 'none') {
-    await postRef.update({
-      'reactions.$userId': FieldValue.delete()
-    });
-  } else {
-    // Also remove from legacy likes array to prevent duplication issues
-    await postRef.update({
-      'reactions.$userId': reactionType,
-      'likes': FieldValue.arrayRemove([userId])
-    });
+  try {
+    final postRef = FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId);
+    
+    if (reactionType == 'none') {
+      await postRef.update({
+        'reactions.$userId': FieldValue.delete()
+      });
+    } else {
+      // Also remove from legacy likes array to prevent duplication issues
+      await postRef.update({
+        'reactions.$userId': reactionType,
+        'likes': FieldValue.arrayRemove([userId])
+      });
+    }
+  } catch (e) {
+    print("Error toggling reaction: $e");
   }
 }
 
 Future<void> toggleLike(String schoolId, String postId, String userId, bool isLiked) async {
-  final postRef = FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId);
-  if (isLiked) {
-    await postRef.update({
-      'likes': FieldValue.arrayRemove([userId])
-    });
-  } else {
-    await postRef.update({
-      'likes': FieldValue.arrayUnion([userId])
-    });
+  try {
+    final postRef = FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId);
+    if (isLiked) {
+      await postRef.update({
+        'likes': FieldValue.arrayRemove([userId])
+      });
+    } else {
+      await postRef.update({
+        'likes': FieldValue.arrayUnion([userId])
+      });
+    }
+  } catch (e) {
+    print("Error toggling like: $e");
   }
 }
 
 Future<void> deletePost(String schoolId, String postId) async {
-  await FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId).delete();
+  try {
+    await FirebaseFirestore.instance.collection('schools').doc(schoolId).collection('posts').doc(postId).delete();
+  } catch (e) {
+    print("Error deleting post: $e");
+  }
 }
 
 final hiddenPostsProvider = StateNotifierProvider<HiddenPostsNotifier, List<String>>((ref) {
