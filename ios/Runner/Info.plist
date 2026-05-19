@@ -66,6 +66,10 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>We need photo library access to save invoices to your gallery.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>We need photo library access to save invoices to your gallery.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

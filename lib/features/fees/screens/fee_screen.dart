@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/theme_colors.dart';
 import '../widgets/reliability_score_chart.dart';
 import '../widgets/yearly_fee_calendar.dart';
+import '../widgets/downloadable_invoice.dart';
 import '../services/fee_calculator_service.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../providers/fee_settings_provider.dart';
@@ -212,7 +213,7 @@ class FeeScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  FeeReceiptWidget(kid: currentKid, schoolName: schoolName),
+                  DownloadableInvoice(kid: currentKid, schoolName: schoolName),
                   const SizedBox(height: 32),
                   ElevatedButton.icon(
                     onPressed: () {}, // locked, does nothing yet
@@ -283,7 +284,8 @@ class _ZigZagClipper extends CustomClipper<Path> {
 class FeeReceiptWidget extends StatelessWidget {
   final KidData kid;
   final String schoolName;
-  const FeeReceiptWidget({super.key, required this.kid, required this.schoolName});
+  final String? monthName;
+  const FeeReceiptWidget({super.key, required this.kid, required this.schoolName, this.monthName});
 
   @override
   Widget build(BuildContext context) {
@@ -354,7 +356,7 @@ class FeeReceiptWidget extends StatelessWidget {
                   const SizedBox(height: 8),
                   Center(
                     child: Text(
-                      'Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                      monthName != null ? 'Month: $monthName' : 'Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
                       style: GoogleFonts.spaceMono(
                         fontSize: 12,
                         color: Colors.black54,

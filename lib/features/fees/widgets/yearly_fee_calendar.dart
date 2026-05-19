@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/theme_colors.dart';
 import '../../kids/providers/kids_provider.dart';
+import '../screens/detailed_invoice_screen.dart';
 
 enum FeeStatus { paid, pending, overdue, upcoming }
 
@@ -99,7 +100,7 @@ class YearlyFeeCalendar extends StatelessWidget {
               itemCount: months.length,
               itemBuilder: (context, index) {
                 final month = months[index];
-                return _buildMonthCard(month);
+                return _buildMonthCard(context, month);
               },
             ),
           ),
@@ -109,7 +110,7 @@ class YearlyFeeCalendar extends StatelessWidget {
     );
   }
 
-  Widget _buildMonthCard(MonthFee month) {
+  Widget _buildMonthCard(BuildContext context, MonthFee month) {
     Color bgColor;
     Color textColor;
     IconData icon;
@@ -137,35 +138,45 @@ class YearlyFeeCalendar extends StatelessWidget {
         break;
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: textColor.withOpacity(0.2), width: 1),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Icon(icon, color: textColor, size: 16),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailedInvoiceScreen(kid: kid, month: month),
           ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  month.monthName,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: textColor == Colors.white ? Colors.white : ThemeColors.primaryText,
-                  ),
-                ),
-              ],
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: textColor.withOpacity(0.2), width: 1),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(icon, color: textColor, size: 16),
             ),
-          ),
-        ],
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    month.monthName,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: textColor == Colors.white ? Colors.white : ThemeColors.primaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

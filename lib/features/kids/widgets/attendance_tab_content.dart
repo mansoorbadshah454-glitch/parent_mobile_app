@@ -317,7 +317,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
           
           const SizedBox(height: 24),
           
-          // Apply Leave Banner
+          // Apply Leave Banner & Feedback
           if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'pending')
             Container(
               padding: const EdgeInsets.all(16),
@@ -335,20 +335,80 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                     child: Icon(Icons.access_time_rounded, color: Colors.orange.shade700),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Leave Pending Review', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        SizedBox(height: 4),
-                        Text('Your recent leave application is being reviewed by the teacher.', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                        Text(TranslationHelper.translate('Leave Pending Review', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text(TranslationHelper.translate('Your recent leave application is being reviewed by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
                       ],
                     ),
                   ),
                 ],
               ),
             )
-          else
+          else ...[
+            if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'granted')
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.green.shade100, shape: BoxShape.circle),
+                      child: Icon(Icons.check_circle_outline_rounded, color: Colors.green.shade700),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(TranslationHelper.translate('Leave Granted', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text(TranslationHelper.translate('Your leave application has been approved by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'rejected')
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
+                      child: Icon(Icons.cancel_outlined, color: Colors.red.shade700),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(TranslationHelper.translate('Leave Rejected', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text(TranslationHelper.translate('Your recent leave application was not approved.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             InkWell(
               onTap: () {
                 Navigator.push(context, MaterialPageRoute(
@@ -374,13 +434,13 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                       child: const Icon(Icons.edit_document, color: Colors.white),
                     ),
                     const SizedBox(width: 16),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Apply for Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                          SizedBox(height: 4),
-                          Text('Submit a sick leave or emergency application', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          Text(TranslationHelper.translate('Apply for Leave', lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text(TranslationHelper.translate('Submit a sick leave or emergency application', lang), style: const TextStyle(color: Colors.white70, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -389,6 +449,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                 ),
               ),
             ),
+          ],
 
           Text(
             TranslationHelper.translate("Monthly Summary", lang),

@@ -9,6 +9,7 @@ class NewsPost {
   final String content;
   final String type;
   final String targetClassName;
+  final String targetClassId;
   final String audience;
   final String authorName;
   final String role;
@@ -27,6 +28,7 @@ class NewsPost {
     required this.content,
     required this.type,
     required this.targetClassName,
+    required this.targetClassId,
     required this.audience,
     required this.authorName,
     required this.role,
@@ -66,7 +68,8 @@ class NewsPost {
       content: map['content'] ?? map['text'] ?? '',
       type: map['type'] ?? 'announcement',
       targetClassName: map['targetClassName'] ?? '',
-      audience: map['audience'] ?? 'all',
+      targetClassId: map['targetClassId']?.toString() ?? '',
+      audience: map['audience'] ?? map['targetAudience'] ?? 'all',
       authorName: map['authorName'] ?? 'School Admin',
       role: map['role'] ?? 'Admin',
       authorImage: map['authorImage'] ?? '',
@@ -166,6 +169,7 @@ final newsProvider = StreamProvider<List<NewsPost>>((ref) {
 
   final schoolId = parentDataAsync.value!.schoolId;
   final kidsClasses = kidsAsync.value!.map((k) => k.className).toSet();
+  final kidsClassIds = kidsAsync.value!.map((k) => k.classId).toSet();
 
   if (schoolId.isEmpty) {
     return Stream.value([]);
@@ -186,7 +190,7 @@ final newsProvider = StreamProvider<List<NewsPost>>((ref) {
 
       if (post.audience == 'all' || post.audience.isEmpty) return true;
       if (post.audience == 'class') {
-        return kidsClasses.contains(post.targetClassName);
+        return kidsClassIds.contains(post.targetClassId) || kidsClasses.contains(post.targetClassName);
       }
       return false;
     }).toList();
