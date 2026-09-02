@@ -82,43 +82,43 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
   }
 
   ({String label, String grade, Color color, Color bg, IconData icon}) _getStatusBadge(double score) {
-    if (score >= 90) {
+    if (score >= 85) {
       return (
         label: "Outstanding",
         grade: "A+ Distinction",
-        color: const Color(0xFF059669),
+        color: const Color(0xFF059669), // Rich Green
         bg: const Color(0xFFECFDF5),
         icon: Icons.workspace_premium_rounded,
       );
-    } else if (score >= 80) {
+    } else if (score >= 70) {
       return (
         label: "Excellent",
         grade: "Grade A",
-        color: const Color(0xFF2563EB),
-        bg: const Color(0xFFEFF6FF),
+        color: const Color(0xFF10B981), // Green
+        bg: const Color(0xFFECFDF5),
         icon: Icons.trending_up_rounded,
       );
-    } else if (score >= 70) {
+    } else if (score >= 45) {
       return (
         label: "Good Standing",
-        grade: "Grade B+",
-        color: ThemeColors.primaryPurple,
-        bg: const Color(0xFFF5F3FF),
+        grade: "Grade B",
+        color: const Color(0xFF16A34A), // Green (45% to 100% is Green)
+        bg: const Color(0xFFF0FDF4),
         icon: Icons.thumb_up_rounded,
       );
-    } else if (score >= 60) {
+    } else if (score >= 35) {
       return (
         label: "Developing",
-        grade: "Grade B",
-        color: const Color(0xFFD97706),
-        bg: const Color(0xFFFFFBEB),
+        grade: "Grade C",
+        color: const Color(0xFFF97316), // Orange (35% to 45%)
+        bg: const Color(0xFFFFF7ED),
         icon: Icons.eco_rounded,
       );
     } else {
       return (
         label: "Needs Focus",
-        grade: "Grade C",
-        color: const Color(0xFFDC2626),
+        grade: "Grade D",
+        color: const Color(0xFFDC2626), // Red (30% and below)
         bg: const Color(0xFFFEF2F2),
         icon: Icons.priority_high_rounded,
       );
