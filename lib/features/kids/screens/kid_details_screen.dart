@@ -4,12 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../providers/kids_provider.dart';
 import '../widgets/shining_profile_avatar.dart';
 import '../widgets/academic_tab_content.dart';
+import '../widgets/homework_tab_content.dart';
 import '../widgets/personality_tab_content.dart';
 import '../widgets/attendance_tab_content.dart';
 import '../widgets/syllabus_tab_content.dart';
 import '../widgets/result_tab_content.dart';
 import '../widgets/tests_reports_tab_content.dart';
 import '../widgets/chat_tab_content.dart';
+import '../widgets/performance_tab_content.dart';
 import '../../../core/providers/parent_data_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 
@@ -28,8 +30,8 @@ class KidDetailsScreen extends ConsumerWidget {
     final currentKid = kidsAsyncValue.value?.firstWhere((k) => k.id == kid.id, orElse: () => kid) ?? kid;
 
     return DefaultTabController(
-      key: const ValueKey('kid_details_tabs_7'),
-      length: 7,
+      key: const ValueKey('kid_details_tabs_9'),
+      length: 9,
       initialIndex: initialTabIndex,
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -40,11 +42,6 @@ class KidDetailsScreen extends ConsumerWidget {
               padding: EdgeInsets.only(top: topPadding, bottom: 24),
               decoration: const BoxDecoration(
                 color: ThemeColors.primaryPurple,
-                image: DecorationImage(
-                  image: AssetImage('assets/images/school_pattern.png'),
-                  fit: BoxFit.cover,
-                  opacity: 0.2, // Subtle overlay like whatsapp background
-                ),
                 boxShadow: [
                   BoxShadow(
                     color: ThemeColors.deepPurple,
@@ -137,10 +134,12 @@ class KidDetailsScreen extends ConsumerWidget {
                 indicatorColor: ThemeColors.primaryPurple,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                 tabs: const [
+                  Tab(text: 'Performance'),
                   Tab(text: 'Academic'),
+                  Tab(text: 'Homework'),
+                  Tab(text: 'Syllabus'),
                   Tab(text: 'Personality'),
                   Tab(text: 'Attendance'),
-                  Tab(text: 'Syllabus'),
                   Tab(text: 'Tests & Reports'),
                   Tab(text: 'Result'),
                   Tab(text: 'Chat'),
@@ -152,10 +151,12 @@ class KidDetailsScreen extends ConsumerWidget {
             Expanded(
               child: TabBarView(
                 children: [
+                  PerformanceTabContent(kid: currentKid),
                   AcademicTabContent(kid: currentKid),
+                  HomeworkTabContent(kid: currentKid),
+                  SyllabusTabContent(kid: currentKid),
                   PersonalityTabContent(kid: currentKid),
                   AttendanceTabContent(kid: currentKid),
-                  SyllabusTabContent(kid: currentKid),
                   TestsReportsTabContent(kid: currentKid),
                   ResultTabContent(kid: currentKid),
                   ChatTabContent(kid: currentKid),

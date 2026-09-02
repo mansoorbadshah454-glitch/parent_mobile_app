@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -62,43 +64,116 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  
-  // Enable bounded offline persistence to prevent storage bloat
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: 100 * 1024 * 1024, // Enterprise Scalability: Cap at 100MB
-  );
-  print("💽 [Main] Firestore Offline Persistence Enabled");
-  
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Global Error Handlers for Flutter
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      print("Flutter Error Caught: ${details.exception}");
+    };
+    
+    PlatformDispatcher.instance.onError = (error, stack) {
+      print("Platform Dispatcher Error Caught: $error");
+      return true;
+    };
 
-  final container = ProviderContainer();
-  PushNotificationService().setContainer(container);
+    try {
+      await Firebase.initializeApp();
+      
+      // Enable bounded offline persistence to prevent storage bloat
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: 100 * 1024 * 1024, // Enterprise Scalability: Cap at 100MB
+      );
+      print("💽 [Main] Firestore Offline Persistence Enabled");
+      
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  try {
-    final message = await FirebaseMessaging.instance.getInitialMessage();
-    if (message != null) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        try {
-          final dynamic rawType = message.data['type'];
-          final String? type = rawType?.toString();
-          PushNotificationService().routeFromType(type);
-        } catch (e) {
-          print("Error routing initial message: $e");
+      final container = ProviderContainer();
+      PushNotificationService().setContainer(container);
+
+      try {
+        final message = await FirebaseMessaging.instance.getInitialMessage();
+        if (message != null) {
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            try {
+              final dynamic rawType = message.data['type'];
+              final String? type = rawType?.toString();
+              PushNotificationService().routeFromType(type);
+            } catch (e) {
+              print("Error routing initial message: $e");
+            }
+          });
         }
-      });
-    }
-  } catch (e) {
-    print("Error getting initial message: $e");
-  }
+      } catch (e) {
+        print("Error getting initial message: $e");
+      }
 
-  runApp(UncontrolledProviderScope(
-    container: container,
-    child: const ParentApp(),
-  ));
+      runApp(UncontrolledProviderScope(
+        container: container,
+        child: const ParentApp(),
+      ));
+      
+    } catch (e, stackTrace) {
+      print("FATAL INITIALIZATION ERROR: $e");
+      runApp(ErrorApp(errorMessage: e.toString(), stackTrace: stackTrace.toString()));
+    }
+  }, (error, stack) {
+    print("Zoned Error Caught: $error");
+  });
+}
+
+class ErrorApp extends StatelessWidget {
+  final String errorMessage;
+  final String stackTrace;
+
+  const ErrorApp({super.key, required this.errorMessage, required this.stackTrace});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Initialization Error', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.red,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'The app failed to start due to a configuration error.',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'If you downloaded this from the Play Store, you likely need to add the Google Play App Signing SHA-1 fingerprint to your Firebase Console.',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              const Text('Error Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.grey[200],
+                child: Text(errorMessage, style: const TextStyle(fontFamily: 'monospace')),
+              ),
+              const SizedBox(height: 16),
+              const Text('Stack Trace:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.grey[200],
+                child: Text(stackTrace, style: const TextStyle(fontFamily: 'monospace', fontSize: 10)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class ParentApp extends ConsumerWidget {
