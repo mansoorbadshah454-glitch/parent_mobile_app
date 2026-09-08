@@ -17,6 +17,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/glowing_school_background.dart';
 import '../../../services/push_notification_service.dart';
 import '../../menu/screens/school_timing_screen.dart';
+import '../../transport/screens/pickup_dropoff_screen.dart';
 import '../../menu/screens/bank_details_screen.dart';
 import '../../menu/screens/help_support_screen.dart';
 import '../../menu/screens/about_screen.dart';
@@ -263,6 +264,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SchoolTimingScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.directions_bus_rounded, color: ThemeColors.primaryPurple),
+              title: const Text('Pickup & Drop-off', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupDropoffScreen()));
               },
             ),
             ListTile(

@@ -47,6 +47,23 @@ class TranslationHelper {
     "Role Model": "رول ماڈل",
     "Developing": "ترقی پذیر",
     "Needs Guidance": "رہنمائی کی ضرورت ہے",
+
+    // --- Examination & Result Card ---
+    "Academic Examination Results": "امتحانی نتائج",
+    "Term-wise evaluation and DMC certificates": "ٹرم کے لحاظ سے کارکردگی اور ڈی ایم سی سرٹیفکیٹ",
+    "First Term Examination": "فرسٹ ٹرم امتحانات",
+    "First Term Examination 2026": "فرسٹ ٹرم امتحانات 2026",
+    "Mid Term Examination": "مڈ ٹرم امتحانات",
+    "Mid Term Examination 2026": "مڈ ٹرم امتحانات 2026",
+    "Annual / Final Examination 2026": "سالانہ / فائنل امتحانات 2026",
+    "Final / Annual Examination": "فائنل / سالانہ امتحانات",
+    "Available": "دستیاب",
+    "Pending": "زیر التواء",
+    "View & Download Result Card": "رزلٹ کارڈ دیکھیں اور ڈاؤنلوڈ کریں",
+    "Download & Share DMC PDF": "ڈی ایم سی پی ڈی ایف ڈاؤنلوڈ / شیئر کریں",
+    "Generating DMC PDF...": "ڈی ایم سی تیار ہو رہی ہے...",
+    "Subject Breakdown": "مضامین کے نمبرز کی تفصیل",
+    "Result Not Announced Yet": "نتیجہ ابھی جاری نہیں ہوا",
     
     "Exceptional! 🌟 Your child demonstrates wonderful habits, excellent behavior, and outstanding personal care.":
         "استثنائی! 🌟 آپ کا بچہ شاندار عادات، بہترین رویے، اور ذاتی دیکھ بھال کا مظاہرہ کرتا ہے۔",
@@ -433,7 +450,7 @@ class TranslationHelper {
     _dictionary.forEach((eng, urd) {
       if (eng.split(' ').length <= 4) {
         // Use case-insensitive RegExp for inline replacements
-        translatedText = translatedText.replaceAll(RegExp(eng, caseSensitive: false), urd);
+        translatedText = translatedText.replaceAll(RegExp(RegExp.escape(eng), caseSensitive: false), urd);
       }
     });
 

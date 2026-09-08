@@ -124,27 +124,43 @@ class _ApplyLeaveScreenState extends ConsumerState<ApplyLeaveScreen> {
       final parentData = ref.read(parentDataProvider).value;
       if (parentData == null) throw Exception("Parent data missing");
 
-      // The kid object contains the classId and id (studentId)
-      // Path: schools/{schoolId}/classes/{classId}/students/{studentId}
-      final studentRef = FirebaseFirestore.instance
-          .collection('schools')
-          .doc(parentData.schoolId)
-          .collection('classes')
-          .doc(widget.kid.classId)
-          .collection('students')
-          .doc(widget.kid.id);
-
       final dateFormat = DateFormat('yyyy-MM-dd');
-      
-      await studentRef.update({
+      final leaveData = {
         'activeLeave': {
           'startDate': dateFormat.format(_startDate!),
           'endDate': dateFormat.format(_endDate!),
           'template': finalReason,
           'status': 'pending',
           'appliedAt': FieldValue.serverTimestamp(),
+        },
+        'transport': {
+          'isTakingVanToday': false,
+          'leaveReason': finalReason,
+          'updatedAt': FieldValue.serverTimestamp(),
         }
-      });
+      };
+
+      // 1. Update in classes path
+      if (widget.kid.classId.isNotEmpty) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('schools')
+              .doc(parentData.schoolId)
+              .collection('classes')
+              .doc(widget.kid.classId)
+              .collection('students')
+              .doc(widget.kid.id)
+              .set(leaveData, SetOptions(merge: true));
+        } catch (_) {}
+      }
+
+      // 2. Update directly in students collection for driver & transport instant sync
+      await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(parentData.schoolId)
+          .collection('students')
+          .doc(widget.kid.id)
+          .set(leaveData, SetOptions(merge: true));
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

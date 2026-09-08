@@ -106,7 +106,10 @@ class PushNotificationService {
       final kidsAsyncValue = _container?.read(kidsProvider);
       if (kidsAsyncValue != null && kidsAsyncValue.hasValue) {
         try {
-          final kid = kidsAsyncValue.value!.firstWhere((k) => k.id == kidIdPayload);
+          final kid = kidsAsyncValue.value!.firstWhere(
+            (k) => k.id == kidIdPayload,
+            orElse: () => kidsAsyncValue.value!.first,
+          );
           Future.delayed(const Duration(milliseconds: 300), () {
             rootNavigatorKey.currentState?.push(
               MaterialPageRoute(builder: (_) => KidDetailsScreen(kid: kid, initialTabIndex: 3)),

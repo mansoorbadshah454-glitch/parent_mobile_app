@@ -48,11 +48,20 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            val keyProps = rootProject.file("key.properties")
+            val keystoreExists = keystoreProperties.getProperty("storeFile")?.let { file(it).exists() } ?: false
+            if (keyProps.exists() && keystoreExists) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
