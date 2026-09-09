@@ -18,6 +18,9 @@ class KidData {
   final List<Map<String, dynamic>> feeStructure;
   final List<Map<String, dynamic>> individualActions;
   final Map<String, dynamic>? activeLeave;
+  final Map<String, dynamic>? pendingPaymentSubmission;
+  final String? lastPaymentProofUrl;
+  final String? lastPaymentMode;
 
   KidData({
     required this.id,
@@ -35,6 +38,9 @@ class KidData {
     this.feeStructure = const [],
     this.individualActions = const [],
     this.activeLeave,
+    this.pendingPaymentSubmission,
+    this.lastPaymentProofUrl,
+    this.lastPaymentMode,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -60,6 +66,11 @@ class KidData {
         parsedActiveLeave = Map<String, dynamic>.from(map['activeLeave']);
       }
 
+      Map<String, dynamic>? parsedPendingPayment;
+      if (map['pendingPaymentSubmission'] is Map) {
+        parsedPendingPayment = Map<String, dynamic>.from(map['pendingPaymentSubmission']);
+      }
+
     return KidData(
       id: id,
       name: map['name'] ?? '${map['firstName'] ?? ''} ${map['lastName'] ?? ''}'.trim(),
@@ -80,6 +91,9 @@ class KidData {
       feeStructure: parsedFeeStructure,
       individualActions: parsedIndividualActions,
       activeLeave: parsedActiveLeave,
+      pendingPaymentSubmission: parsedPendingPayment,
+      lastPaymentProofUrl: map['lastPaymentProofUrl']?.toString(),
+      lastPaymentMode: map['lastPaymentMode']?.toString(),
     );
   }
 

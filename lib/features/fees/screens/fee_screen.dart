@@ -5,6 +5,7 @@ import '../../../../core/theme/theme_colors.dart';
 import '../widgets/reliability_score_chart.dart';
 import '../widgets/yearly_fee_calendar.dart';
 import '../widgets/downloadable_invoice.dart';
+import '../widgets/pay_fee_bottom_sheet.dart';
 import '../services/fee_calculator_service.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../providers/fee_settings_provider.dart';
@@ -211,34 +212,252 @@ class FeeScreen extends ConsumerWidget {
             SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  DownloadableInvoice(kid: currentKid, schoolName: schoolName),
-                  const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () {}, // locked, does nothing yet
-                    icon: const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
-                    label: Text(
-                      'Pay Now',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ThemeColors.primaryPurple.withOpacity(0.5), // Dimmed to indicate locked
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
-                      elevation: 0,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Coming Soon',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
+              child: Builder(
+                builder: (context) {
+                  final isPaid = currentKid.monthlyFeeStatus.toLowerCase() == 'paid';
+                  final pending = currentKid.pendingPaymentSubmission;
+                  final isPending = pending != null && pending['status'] == 'pending';
+                  final isNeedsReupload = pending != null && pending['status'] == 'needs_reupload';
+
+                  double totalRecurring = 0.0;
+                  for (var fee in currentKid.feeStructure) {
+                    totalRecurring += (fee['amount'] as num?)?.toDouble() ?? 0.0;
+                  }
+                  double totalActions = 0.0;
+                  double paidActions = 0.0;
+                  for (var action in currentKid.individualActions) {
+                    totalActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
+                    if (action['status'] == 'paid') {
+                      paidActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
+                    }
+                  }
+                  double calculatedDue = (totalRecurring + totalActions) - ((isPaid ? totalRecurring : 0) + paidActions);
+                  if (calculatedDue <= 0 && !isPaid) {
+                    calculatedDue = totalRecurring > 0 ? totalRecurring : 1000.0;
+                  }
+
+                  return Column(
+                    children: [
+                      DownloadableInvoice(kid: currentKid, schoolName: schoolName),
+                      const SizedBox(height: 28),
+
+                      if (isPaid) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFA7F3D0)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withOpacity(0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.verified_rounded, color: Color(0xFF059669), size: 28),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Fee Cleared / Paid',
+                                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF065F46)),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'All dues for this period have been cleared successfully.',
+                                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF047857)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (isPending) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFFDE68A)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade200,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade900, size: 24),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Payment Under Verification',
+                                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                        ),
+                                        Text(
+                                          'Submitted via ${pending['paymentMethod'] ?? 'Online'}',
+                                          style: GoogleFonts.inter(fontSize: 12, color: Colors.amber.shade800),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Pending',
+                                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Payment proof of Rs. ${pending['amount'] ?? calculatedDue} has been submitted. The school admin will verify and confirm shortly.',
+                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.black87),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (isNeedsReupload) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF7ED),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFFED7AA)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade200,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.refresh_rounded, color: Colors.orange.shade900, size: 24),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Slip Re-upload Requested',
+                                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+                                          ),
+                                          Text(
+                                            'Action Required',
+                                            style: GoogleFonts.inter(fontSize: 12, color: Colors.orange.shade800),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.info_outline_rounded, size: 18, color: Colors.orange.shade800),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          pending['message']?.toString().isNotEmpty == true
+                                              ? pending['message'].toString()
+                                              : 'The school administration requested a clearer screenshot or proof of payment.',
+                                          style: GoogleFonts.inter(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: () => PayFeeBottomSheet.show(context, currentKid, calculatedDue),
+                                  icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white, size: 18),
+                                  label: Text(
+                                    'Re-upload Payment Slip',
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange.shade800,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                        ElevatedButton.icon(
+                          onPressed: () => PayFeeBottomSheet.show(context, currentKid, calculatedDue),
+                          icon: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
+                          label: Text(
+                            'Pay Now (Rs. ${calculatedDue.toStringAsFixed(0)})',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ThemeColors.primaryPurple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
+                            elevation: 4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock_outline_rounded, size: 14, color: Colors.grey.shade600),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Pay via EasyPaisa, JazzCash, or Bank Transfer',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ],

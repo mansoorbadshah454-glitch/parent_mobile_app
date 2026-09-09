@@ -63,8 +63,13 @@ class FeesDashboardScreen extends ConsumerWidget {
                     final kid = kids[index];
                     
                     final isPaid = kid.monthlyFeeStatus.toLowerCase() == 'paid';
-                    final dueBadgeColor = isPaid ? Colors.green : Colors.redAccent;
-                    final dueBadgeText = isPaid ? 'Fee Paid' : 'Unpaid';
+                    final isPending = kid.pendingPaymentSubmission != null && kid.pendingPaymentSubmission!['status'] == 'pending';
+                    final dueBadgeColor = isPaid 
+                        ? Colors.green 
+                        : (isPending ? Colors.amber.shade800 : Colors.redAccent);
+                    final dueBadgeText = isPaid 
+                        ? 'Fee Paid' 
+                        : (isPending ? 'Under Review' : 'Unpaid');
 
                     return Card(
                       color: Colors.white,

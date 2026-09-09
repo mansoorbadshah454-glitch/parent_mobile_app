@@ -9,6 +9,7 @@ class ParentData {
   final String schoolId;
   final String name;
   final String email;
+  final String? phone;
   final String? schoolName;
   final String? schoolLogo;
 
@@ -17,6 +18,7 @@ class ParentData {
     required this.schoolId,
     required this.name,
     required this.email,
+    this.phone,
     this.schoolName,
     this.schoolLogo,
   });
@@ -27,6 +29,7 @@ class ParentData {
       schoolId: map['schoolId'] ?? '',
       name: map['name'] ?? 'Parent',
       email: email,
+      phone: map['phone']?.toString() ?? map['contact']?.toString() ?? map['phoneNumber']?.toString(),
       schoolName: schoolName,
       schoolLogo: schoolLogo,
     );

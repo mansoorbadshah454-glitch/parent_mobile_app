@@ -59,6 +59,8 @@ dependencies:
   share_plus: any
   path_provider: any
   cross_file: any
+  image_picker: ^1.1.2
+  firebase_storage: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
