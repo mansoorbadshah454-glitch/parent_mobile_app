@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 
 class FeeCalculatorService {
+  /// Safely parses dynamic or string values to double, preventing type cast runtime crashes
+  static double parseDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString().trim()) ?? 0.0;
+  }
+
   /// Calculates the reliable payment score based on rule:
   /// 1st to 3rd: 100% to 80%
   /// 4th to 6th: 70% to 50%

@@ -16,19 +16,21 @@ import '../../kids/providers/kids_provider.dart';
 class PayFeeBottomSheet extends ConsumerStatefulWidget {
   final KidData kid;
   final double totalAmount;
+  final String? feeMonth;
 
   const PayFeeBottomSheet({
     super.key,
     required this.kid,
     required this.totalAmount,
+    this.feeMonth,
   });
 
-  static Future<void> show(BuildContext context, KidData kid, double totalAmount) {
+  static Future<void> show(BuildContext context, KidData kid, double totalAmount, {String? feeMonth}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => PayFeeBottomSheet(kid: kid, totalAmount: totalAmount),
+      builder: (context) => PayFeeBottomSheet(kid: kid, totalAmount: totalAmount, feeMonth: feeMonth),
     );
   }
 
@@ -113,6 +115,7 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
       final String downloadUrl = await snap.ref.getDownloadURL();
 
       final currentMonthStr = DateFormat('MMMM yyyy').format(DateTime.now());
+      final effectiveMonthStr = widget.feeMonth?.isNotEmpty == true ? widget.feeMonth! : currentMonthStr;
       final nowIso = DateTime.now().toIso8601String();
 
       // 2. Add submission to schools/{schoolId}/paymentSubmissions
@@ -141,7 +144,7 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
         'proofUrl': downloadUrl,
         'status': 'pending',
         'submittedAt': nowIso,
-        'month': currentMonthStr,
+        'month': effectiveMonthStr,
       };
 
       await submissionRef.set(submissionData);
@@ -155,7 +158,7 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
         'proofUrl': downloadUrl,
         'submittedAt': nowIso,
         'submissionId': submissionRef.id,
-        'month': currentMonthStr,
+        'month': effectiveMonthStr,
       };
 
       if (widget.kid.classId.isNotEmpty) {
@@ -294,7 +297,34 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            if (widget.feeMonth != null && widget.feeMonth!.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E8FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFD8B4FE)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_month_rounded, size: 18, color: ThemeColors.primaryPurple),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Fee Month: ${widget.feeMonth}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: ThemeColors.primaryPurple,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Step 1: Select School Account to Transfer To
             Text(

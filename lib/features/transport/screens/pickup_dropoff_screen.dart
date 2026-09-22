@@ -206,11 +206,129 @@ class _PickupDropoffScreenState extends ConsumerState<PickupDropoffScreen>
                               style: GoogleFonts.montserrat(color: Colors.red),
                             ),
                           ),
-                          data: (details) => _buildMainContent(details),
+                          data: (details) => details.isAllocated
+                              ? _buildMainContent(details)
+                              : _buildNotEnrolledState(details),
                         ),
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildNotEnrolledState(KidTransportDetails details) {
+    final parentData = ref.watch(parentDataProvider).value;
+    final schoolPhone = parentData?.phone ?? '';
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: ThemeColors.primaryPurple.withOpacity(0.08),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ThemeColors.primaryPurple.withOpacity(0.2),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.directions_bus_outlined,
+                size: 48,
+                color: ThemeColors.primaryPurple,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Transport Service Not Enrolled',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: ThemeColors.primaryText,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '${details.kidName.isNotEmpty ? details.kidName : "Your child"} is not currently registered for the school transport service. If you would like to avail daily van/bus pickup and drop-off, please contact the school administration office.',
+                style: GoogleFonts.montserrat(
+                  fontSize: 13,
+                  color: ThemeColors.secondaryText,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 20, color: Color(0xFFF59E0B)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Want to register for School Bus?',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: ThemeColors.primaryText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Contact school front desk or visit the administration office during official timings to select your route and stop.',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 12,
+                      color: ThemeColors.secondaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (schoolPhone.isNotEmpty)
+              ElevatedButton.icon(
+                onPressed: () => _callPhone(schoolPhone),
+                icon: const Icon(Icons.phone, size: 18),
+                label: const Text('Contact School Office'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ThemeColors.primaryPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1286,16 +1404,18 @@ class _PickupDropoffScreenState extends ConsumerState<PickupDropoffScreen>
                         kidId: _selectedKidId,
                         isTakingVan: !isAbsent,
                       );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isAbsent
-                                ? 'Alert sent: Student marked absent from van today.'
-                                : 'Van pickup status restored.',
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isAbsent
+                                  ? 'Alert sent: Student marked absent from van today.'
+                                  : 'Van pickup status restored.',
+                            ),
+                            backgroundColor: isAbsent ? Colors.red.shade700 : ThemeColors.primaryPurple,
                           ),
-                          backgroundColor: isAbsent ? Colors.red.shade700 : ThemeColors.primaryPurple,
-                        ),
-                      );
+                        );
+                      }
                     }
                   },
                 ),

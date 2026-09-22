@@ -67,8 +67,13 @@ class _ShiningProfileAvatarState extends State<ShiningProfileAvatar>
               children: [
                 CircleAvatar(
                   radius: widget.radius,
-                  backgroundImage: CachedNetworkImageProvider(widget.imageUrl),
+                  backgroundImage: widget.imageUrl.trim().isNotEmpty
+                      ? CachedNetworkImageProvider(widget.imageUrl)
+                      : null,
                   backgroundColor: Colors.grey[200],
+                  child: widget.imageUrl.trim().isEmpty
+                      ? const Icon(Icons.person, color: Colors.grey)
+                      : null,
                 ),
                 // Animated white shimmer layer over the image
                 ClipOval(

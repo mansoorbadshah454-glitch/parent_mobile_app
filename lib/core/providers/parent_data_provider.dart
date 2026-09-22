@@ -12,6 +12,8 @@ class ParentData {
   final String? phone;
   final String? schoolName;
   final String? schoolLogo;
+  final bool isTransportEnabled;
+  final String package;
 
   ParentData({
     required this.uid,
@@ -21,9 +23,19 @@ class ParentData {
     this.phone,
     this.schoolName,
     this.schoolLogo,
+    this.isTransportEnabled = false,
+    this.package = 'standard',
   });
 
-  factory ParentData.fromMap(Map<String, dynamic> map, String uid, String email, {String? schoolName, String? schoolLogo}) {
+  factory ParentData.fromMap(
+    Map<String, dynamic> map,
+    String uid,
+    String email, {
+    String? schoolName,
+    String? schoolLogo,
+    bool isTransportEnabled = false,
+    String package = 'standard',
+  }) {
     return ParentData(
       uid: uid,
       schoolId: map['schoolId'] ?? '',
@@ -32,6 +44,8 @@ class ParentData {
       phone: map['phone']?.toString() ?? map['contact']?.toString() ?? map['phoneNumber']?.toString(),
       schoolName: schoolName,
       schoolLogo: schoolLogo,
+      isTransportEnabled: isTransportEnabled,
+      package: package,
     );
   }
 }
@@ -67,6 +81,9 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
     if (doc.exists) {
       String? schoolName;
       String? schoolLogo;
+      bool isTransportEnabled = false;
+      String schoolPkg = 'standard';
+
       if (schoolId.isNotEmpty) {
         try {
           final schoolDoc = await FirebaseFirestore.instance
@@ -79,14 +96,37 @@ final parentDataProvider = FutureProvider<ParentData?>((ref) async {
             schoolName = schoolDoc.data()?['name'] ?? schoolDoc.data()?['schoolName'];
             schoolLogo = schoolDoc.data()?['profileImage'] ?? schoolDoc.data()?['logo'];
           }
+
+          // Fetch school root document for SaaS package and modules
+          final schoolRootDoc = await FirebaseFirestore.instance
+              .collection('schools')
+              .doc(schoolId)
+              .get();
+          if (schoolRootDoc.exists) {
+            final sData = schoolRootDoc.data() ?? {};
+            schoolPkg = sData['package']?.toString() ?? 'standard';
+            Map<String, dynamic> modules = {};
+            if (sData['modules'] is Map) {
+              modules = Map<String, dynamic>.from(sData['modules'] as Map);
+            }
+            isTransportEnabled = (schoolPkg == 'premium') || (modules['transport'] == true);
+          }
         } catch (e) {
-          debugPrint('Error fetching school profile: $e');
+          debugPrint('Error fetching school profile or package: $e');
         }
       }
       // Adding schoolId to the map manually since it might not be in the parent doc itself
       final mapData = doc.data() ?? {};
       mapData['schoolId'] = schoolId;
-      return ParentData.fromMap(mapData, user.uid, user.email ?? '', schoolName: schoolName, schoolLogo: schoolLogo);
+      return ParentData.fromMap(
+        mapData,
+        user.uid,
+        user.email ?? '',
+        schoolName: schoolName,
+        schoolLogo: schoolLogo,
+        isTransportEnabled: isTransportEnabled,
+        package: schoolPkg,
+      );
     }
   } catch (e) {
     debugPrint('Error fetching parent data: $e');

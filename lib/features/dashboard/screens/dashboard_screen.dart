@@ -45,7 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _hasCheckedOverdueFees = true;
 
     final today = DateTime.now();
-    bool hasUnpaid = kids.any((k) => k.monthlyFeeStatus.toLowerCase() == 'unpaid');
+    bool hasUnpaid = kids.any((k) => (k.monthlyFeeStatus.isNotEmpty ? k.monthlyFeeStatus.toLowerCase() : '') == 'unpaid');
     
     // Push the local notification initializer early so we can schedule
     await PushNotificationService().initLocalNotifications();
@@ -86,12 +86,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  final List<Widget> _screens = [
-    const NewsScreen(),
-    const KidsScreen(),
-    const ChatScreen(),
-    const AlertsScreen(),
-    const FeesDashboardScreen(),
+  List<Widget> get _screens => const [
+    NewsScreen(),
+    KidsScreen(),
+    ChatScreen(),
+    AlertsScreen(),
+    FeesDashboardScreen(),
   ];
 
   void _onMenuTap(int targetIndex) {
@@ -136,7 +136,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       } else if (previous != null && previous.value != null) {
         for (final newKid in kids) {
           final oldKid = previous.value!.firstWhere((k) => k.id == newKid.id, orElse: () => newKid);
-          if (oldKid.monthlyFeeStatus.toLowerCase() == 'unpaid' && newKid.monthlyFeeStatus.toLowerCase() == 'paid') {
+          final oldStatus = oldKid.monthlyFeeStatus.isNotEmpty ? oldKid.monthlyFeeStatus.toLowerCase() : '';
+          final newStatus = newKid.monthlyFeeStatus.isNotEmpty ? newKid.monthlyFeeStatus.toLowerCase() : '';
+          if (oldStatus == 'unpaid' && newStatus == 'paid') {
             PushNotificationService.showGlobalAlert(
               'Fee Processed Successfully',
               'Thank you! The monthly fee for ${newKid.name} is now cleared.',
@@ -266,14 +268,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SchoolTimingScreen()));
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.directions_bus_rounded, color: ThemeColors.primaryPurple),
-              title: const Text('Pickup & Drop-off', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupDropoffScreen()));
-              },
-            ),
+            if (parentData.isTransportEnabled)
+              ListTile(
+                leading: const Icon(Icons.directions_bus_rounded, color: ThemeColors.primaryPurple),
+                title: const Text('Pickup & Drop-off', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupDropoffScreen()));
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.account_balance, color: ThemeColors.primaryPurple),
               title: const Text("Bank Details", style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),

@@ -11,12 +11,14 @@ class DownloadableInvoice extends StatefulWidget {
   final KidData kid;
   final String schoolName;
   final String? monthName;
+  final bool? isPaid;
 
   const DownloadableInvoice({
     super.key,
     required this.kid,
     required this.schoolName,
     this.monthName,
+    this.isPaid,
   });
 
   @override
@@ -36,6 +38,7 @@ class _DownloadableInvoiceState extends State<DownloadableInvoice> {
         kid: widget.kid,
         schoolName: widget.schoolName,
         monthName: widget.monthName,
+        isPaidOverride: widget.isPaid,
       );
 
       if (mounted) {
@@ -73,6 +76,7 @@ class _DownloadableInvoiceState extends State<DownloadableInvoice> {
           kid: widget.kid,
           schoolName: widget.schoolName,
           monthName: widget.monthName,
+          isPaidOverride: widget.isPaid,
         ),
         const SizedBox(height: 16),
         ElevatedButton.icon(

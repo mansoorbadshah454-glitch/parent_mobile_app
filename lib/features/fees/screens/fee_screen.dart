@@ -6,6 +6,7 @@ import '../widgets/reliability_score_chart.dart';
 import '../widgets/yearly_fee_calendar.dart';
 import '../widgets/downloadable_invoice.dart';
 import '../widgets/pay_fee_bottom_sheet.dart';
+import '../widgets/pay_family_fee_bottom_sheet.dart';
 import '../services/fee_calculator_service.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../providers/fee_settings_provider.dart';
@@ -34,7 +35,7 @@ class FeeScreen extends ConsumerWidget {
     final lang = ref.watch(languageProvider);
 
     List<int> paymentHistory = [1, 5, 2, 8, 4]; // Dummy history for past months
-    if (currentKid.monthlyFeeStatus.toLowerCase() == 'paid' && currentKid.monthlyFeeDate != null) {
+    if ((currentKid.monthlyFeeStatus.isNotEmpty ? currentKid.monthlyFeeStatus.toLowerCase() : '') == 'paid' && currentKid.monthlyFeeDate != null) {
       final date = DateTime.tryParse(currentKid.monthlyFeeDate!)?.toLocal();
       if (date != null) {
         paymentHistory.add(date.day);
@@ -164,7 +165,7 @@ class FeeScreen extends ConsumerWidget {
                     children: [
                       const SizedBox(height: 10),
                       // Yearly Fee Grid
-                      YearlyFeeCalendar(kid: currentKid),
+                      YearlyFeeCalendar(kid: currentKid, dueDate: dueDate),
                       const SizedBox(height: 20),
                       // Info Badge Restored
                       Padding(
@@ -214,21 +215,23 @@ class FeeScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               child: Builder(
                 builder: (context) {
-                  final isPaid = currentKid.monthlyFeeStatus.toLowerCase() == 'paid';
+                  final isPaid = (currentKid.monthlyFeeStatus.isNotEmpty ? currentKid.monthlyFeeStatus.toLowerCase() : '') == 'paid';
                   final pending = currentKid.pendingPaymentSubmission;
-                  final isPending = pending != null && pending['status'] == 'pending';
-                  final isNeedsReupload = pending != null && pending['status'] == 'needs_reupload';
+                  final isPending = pending != null && (pending['status'] ?? '').toString() == 'pending';
+                  final isNeedsReupload = pending != null && (pending['status'] ?? '').toString() == 'needs_reupload';
+                  final isRejected = pending != null && (pending['status'] ?? '').toString().trim().toLowerCase() == 'rejected';
 
                   double totalRecurring = 0.0;
                   for (var fee in currentKid.feeStructure) {
-                    totalRecurring += (fee['amount'] as num?)?.toDouble() ?? 0.0;
+                    totalRecurring += FeeCalculatorService.parseDouble(fee['amount']);
                   }
                   double totalActions = 0.0;
                   double paidActions = 0.0;
                   for (var action in currentKid.individualActions) {
-                    totalActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
-                    if (action['status'] == 'paid') {
-                      paidActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
+                    final actAmount = FeeCalculatorService.parseDouble(action['amount']);
+                    totalActions += actAmount;
+                    if ((action['status'] ?? '').toString().toLowerCase() == 'paid') {
+                      paidActions += actAmount;
                     }
                   }
                   double calculatedDue = (totalRecurring + totalActions) - ((isPaid ? totalRecurring : 0) + paidActions);
@@ -280,6 +283,47 @@ class FeeScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        if (currentKid.lastPaymentFineWaived) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF86EFAC)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withOpacity(0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.celebration_rounded, color: Color(0xFF059669), size: 22),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Late Fine Waived by Principal',
+                                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF166534)),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'The late penalty fee was kindly waived by the administration.',
+                                        style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF15803D)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ] else if (isPending) ...[
                         Container(
                           width: double.infinity,
@@ -422,6 +466,110 @@ class FeeScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+                        ] else if (isRejected) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFFECACA)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade100,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.cancel_rounded, color: Colors.red.shade700, size: 24),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Payment Rejected',
+                                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                                          ),
+                                          Text(
+                                            'Action Required - Please Resubmit',
+                                            style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        'Rejected',
+                                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.info_outline_rounded, size: 16, color: Colors.red.shade700),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Reason from School Admin:',
+                                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        pending['rejectReason']?.toString().isNotEmpty == true
+                                            ? pending['rejectReason'].toString()
+                                            : (pending['message']?.toString().isNotEmpty == true
+                                                ? pending['message'].toString()
+                                                : 'Your payment submission was rejected by the administration. Please check details and resubmit.'),
+                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: () => PayFeeBottomSheet.show(context, currentKid, calculatedDue),
+                                  icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                                  label: Text(
+                                    'Submit New Payment',
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade700,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ] else ...[
                         ElevatedButton.icon(
                           onPressed: () => PayFeeBottomSheet.show(context, currentKid, calculatedDue),
@@ -454,6 +602,22 @@ class FeeScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
+                        if (kidsList.length > 1) ...[
+                          const SizedBox(height: 14),
+                          OutlinedButton.icon(
+                            onPressed: () => PayFamilyFeeBottomSheet.show(context, kidsList),
+                            icon: const Icon(Icons.diversity_3_rounded, size: 18, color: ThemeColors.primaryPurple),
+                            label: Text(
+                              'Pay for all siblings together',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: ThemeColors.primaryPurple),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              side: const BorderSide(color: ThemeColors.primaryPurple, width: 1.5),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   );
@@ -504,22 +668,30 @@ class FeeReceiptWidget extends StatelessWidget {
   final KidData kid;
   final String schoolName;
   final String? monthName;
-  const FeeReceiptWidget({super.key, required this.kid, required this.schoolName, this.monthName});
+  final bool? isPaidOverride;
+  const FeeReceiptWidget({
+    super.key,
+    required this.kid,
+    required this.schoolName,
+    this.monthName,
+    this.isPaidOverride,
+  });
 
   @override
   Widget build(BuildContext context) {
-    bool isPaid = kid.monthlyFeeStatus.toLowerCase() == 'paid';
+    bool isPaid = isPaidOverride ?? ((kid.monthlyFeeStatus.isNotEmpty ? kid.monthlyFeeStatus.toLowerCase() : '') == 'paid');
     double totalRecurring = 0;
     for (var fee in kid.feeStructure) {
-      totalRecurring += (fee['amount'] as num?)?.toDouble() ?? 0.0;
+      totalRecurring += FeeCalculatorService.parseDouble(fee['amount']);
     }
 
     double totalActions = 0;
     double paidActions = 0;
     for (var action in kid.individualActions) {
-      totalActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
-      if (action['status'] == 'paid') {
-        paidActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
+      final actAmount = FeeCalculatorService.parseDouble(action['amount']);
+      totalActions += actAmount;
+      if ((action['status'] ?? '').toString().toLowerCase() == 'paid') {
+        paidActions += actAmount;
       }
     }
 
@@ -618,6 +790,37 @@ class FeeReceiptWidget extends StatelessWidget {
                     ),
                   );
               }),
+              if (kid.lastPaymentFineWaived) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.celebration_rounded, color: Color(0xFF059669), size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Late Penalty Waived',
+                            style: GoogleFonts.spaceMono(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF065F46)),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Rs 0 (Maaf)',
+                        style: GoogleFonts.spaceMono(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF059669)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               _buildDashedLine(),
               const SizedBox(height: 16),

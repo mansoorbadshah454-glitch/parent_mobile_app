@@ -21,6 +21,10 @@ class KidData {
   final Map<String, dynamic>? pendingPaymentSubmission;
   final String? lastPaymentProofUrl;
   final String? lastPaymentMode;
+  final List<String> paidMonths;
+  final int previousMonthsUnpaidCount;
+  final String? admissionDate;
+  final bool lastPaymentFineWaived;
 
   KidData({
     required this.id,
@@ -41,6 +45,10 @@ class KidData {
     this.pendingPaymentSubmission,
     this.lastPaymentProofUrl,
     this.lastPaymentMode,
+    this.paidMonths = const [],
+    this.previousMonthsUnpaidCount = 0,
+    this.admissionDate,
+    this.lastPaymentFineWaived = false,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -71,6 +79,18 @@ class KidData {
         parsedPendingPayment = Map<String, dynamic>.from(map['pendingPaymentSubmission']);
       }
 
+      List<String> parsedPaidMonths = [];
+      if (map['paidMonths'] is List) {
+        for (var item in map['paidMonths']) {
+          if (item != null && item.toString().trim().isNotEmpty) {
+            parsedPaidMonths.add(item.toString().trim());
+          }
+        }
+      }
+
+      int parsedPrevUnpaid = int.tryParse(map['previousMonthsUnpaidCount']?.toString() ?? '') ??
+          int.tryParse(map['unpaidMonthsCount']?.toString() ?? '') ?? 0;
+
     return KidData(
       id: id,
       name: map['name'] ?? '${map['firstName'] ?? ''} ${map['lastName'] ?? ''}'.trim(),
@@ -94,6 +114,10 @@ class KidData {
       pendingPaymentSubmission: parsedPendingPayment,
       lastPaymentProofUrl: map['lastPaymentProofUrl']?.toString(),
       lastPaymentMode: map['lastPaymentMode']?.toString(),
+      paidMonths: parsedPaidMonths,
+      previousMonthsUnpaidCount: parsedPrevUnpaid,
+      admissionDate: map['admissionDate']?.toString(),
+      lastPaymentFineWaived: map['lastPaymentFineWaived'] == true,
     );
   }
 

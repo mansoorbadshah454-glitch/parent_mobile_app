@@ -3,27 +3,30 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../kids/providers/kids_provider.dart';
+import '../services/fee_calculator_service.dart';
 
 class InvoicePdfGenerator {
   static Future<File> generateInvoice({
     required KidData kid,
     required String schoolName,
     String? monthName,
+    bool? isPaidOverride,
   }) async {
     final pdf = pw.Document();
 
-    bool isPaid = kid.monthlyFeeStatus.toLowerCase() == 'paid';
+    bool isPaid = isPaidOverride ?? ((kid.monthlyFeeStatus.isNotEmpty ? kid.monthlyFeeStatus.toLowerCase() : '') == 'paid');
     double totalRecurring = 0;
     for (var fee in kid.feeStructure) {
-      totalRecurring += (fee['amount'] as num?)?.toDouble() ?? 0.0;
+      totalRecurring += FeeCalculatorService.parseDouble(fee['amount']);
     }
 
     double totalActions = 0;
     double paidActions = 0;
     for (var action in kid.individualActions) {
-      totalActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
-      if (action['status'] == 'paid') {
-        paidActions += (action['amount'] as num?)?.toDouble() ?? 0.0;
+      final actAmount = FeeCalculatorService.parseDouble(action['amount']);
+      totalActions += actAmount;
+      if ((action['status'] ?? '').toString().toLowerCase() == 'paid') {
+        paidActions += actAmount;
       }
     }
 
