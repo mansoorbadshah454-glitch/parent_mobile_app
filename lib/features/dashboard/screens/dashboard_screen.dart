@@ -209,119 +209,181 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             key: _scaffoldKey,
             backgroundColor: ThemeColors.backgroundColor,
       drawer: Drawer(
-        child: Column(
-          children: [
-            Container(
-              height: 220 + MediaQuery.of(context).padding.top,
-              decoration: const BoxDecoration(
-                color: ThemeColors.primaryPurple,
-              ),
-              child: GlowingSchoolBackground(
-                child: Padding(
-                  padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 53,
-                          backgroundColor: Colors.white24,
-                          backgroundImage: (parentData.schoolLogo != null && parentData.schoolLogo!.trim().isNotEmpty)
-                              ? CachedNetworkImageProvider(parentData.schoolLogo!)
-                              : null,
-                          child: (parentData.schoolLogo == null || parentData.schoolLogo!.trim().isEmpty)
-                              ? const Icon(Icons.school, size: 60, color: Colors.white)
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                      Column(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Container(
+                height: 220 + MediaQuery.of(context).padding.top,
+                decoration: const BoxDecoration(
+                  color: ThemeColors.primaryPurple,
+                ),
+                child: GlowingSchoolBackground(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            parentData.schoolName ?? 'School App',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          CircleAvatar(
+                            radius: 53,
+                            backgroundColor: Colors.white24,
+                            backgroundImage: (parentData.schoolLogo != null && parentData.schoolLogo!.trim().isNotEmpty)
+                                ? CachedNetworkImageProvider(parentData.schoolLogo!)
+                                : null,
+                            child: (parentData.schoolLogo == null || parentData.schoolLogo!.trim().isEmpty)
+                                ? const Icon(Icons.school, size: 60, color: Colors.white)
+                                : null,
                           ),
-                          Text(
-                            "Track your kid's education",
-                            style: GoogleFonts.montserrat(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          const SizedBox(height: 12),
+                          Column(
+                            children: [
+                              Text(
+                                parentData.schoolName ?? 'School App',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "Track your kid's education",
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-            ListTile(
-              leading: const Icon(Icons.access_time_filled, color: ThemeColors.primaryPurple),
-              title: const Text('School Timing', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SchoolTimingScreen()));
-              },
-            ),
-            if (parentData.isTransportEnabled)
-              ListTile(
-                leading: const Icon(Icons.directions_bus_rounded, color: ThemeColors.primaryPurple),
-                title: const Text('Pickup & Drop-off', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupDropoffScreen()));
-                },
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.access_time_filled, color: ThemeColors.primaryPurple),
+                      title: const Text('School Timing', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SchoolTimingScreen()));
+                      },
+                    ),
+                    if (parentData.isTransportEnabled)
+                      ListTile(
+                        leading: const Icon(Icons.directions_bus_rounded, color: ThemeColors.primaryPurple),
+                        title: const Text('Pickup & Drop-off', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupDropoffScreen()));
+                        },
+                      ),
+                    ListTile(
+                      leading: const Icon(Icons.account_balance, color: ThemeColors.primaryPurple),
+                      title: const Text("Bank Details", style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen()));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.help_center, color: ThemeColors.primaryPurple),
+                      title: const Text('Help & Support', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.info, color: ThemeColors.primaryPurple),
+                      title: const Text('About US', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.settings, color: ThemeColors.primaryPurple),
+                      title: const Text('Settings', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                      },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Divider(),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.redAccent),
+                      title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+                      onTap: () {
+                        Navigator.pop(context); // Close drawer
+                        ref.read(authControllerProvider.notifier).logout();
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ListTile(
-              leading: const Icon(Icons.account_balance, color: ThemeColors.primaryPurple),
-              title: const Text("Bank Details", style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.help_center, color: ThemeColors.primaryPurple),
-              title: const Text('Help & Support', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info, color: ThemeColors.primaryPurple),
-              title: const Text('About US', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: ThemeColors.primaryPurple),
-              title: const Text('Settings', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-              },
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Divider(),
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.redAccent),
-              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
-                Navigator.pop(context); // Close drawer
-                ref.read(authControllerProvider.notifier).logout();
-              },
-            ),
-          ],
+              // Sticky Bottom Watermark Footer
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border(
+                    top: BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.verified_user_rounded, size: 12, color: ThemeColors.primaryPurple),
+                        const SizedBox(width: 5),
+                        Text(
+                          'POWERED BY',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            letterSpacing: 1.2,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'MAI TECH (SMC-PRIVATE) LIMITED',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        letterSpacing: 0.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'v1.0.0 • Secure School Cloud',
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       body: Column(
