@@ -199,6 +199,24 @@ class FeeReceiptWidget extends StatelessWidget {
                     ],
                   ),
                 ],
+                if (breakdown.recurringItems.isNotEmpty) ...[
+                  for (var fee in breakdown.recurringItems) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            fee['name']?.toString() ?? 'Recurring Fee',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Rs. ${fee['amount']}', style: const TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
+                ],
                 if (breakdown.storeItems.isNotEmpty) ...[
                   for (var item in breakdown.storeItems) ...[
                     const SizedBox(height: 6),

@@ -526,6 +526,21 @@ class _FeeScreenState extends ConsumerState<FeeScreen> {
                   ),
                 ],
 
+                // 3.1 Other Monthly Recurring Items (Online Services, Library, Hostel, etc.)
+                if (breakdown.recurringItems.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ...breakdown.recurringItems.map((fee) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: _buildBreakdownRow(
+                      icon: Icons.hub_rounded,
+                      iconColor: const Color(0xFF0D9488),
+                      title: fee['name']?.toString() ?? 'Recurring Fee',
+                      subtitle: 'Monthly recurring service fee',
+                      amountText: 'Rs. ${fee['amount']}',
+                    ),
+                  )),
+                ],
+
                 // 4. Store Inventory Purchases (Uniform, Books, Stationery)
                 if (breakdown.storeItems.isNotEmpty) ...[
                   const SizedBox(height: 12),

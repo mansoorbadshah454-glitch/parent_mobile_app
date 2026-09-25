@@ -48,11 +48,12 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
     });
 
     try {
+      final bool isKidPaid = breakdown.isPaid || (breakdown.isFullScholarship && breakdown.totalPayable <= 0);
       final File pdfFile = await InvoicePdfGenerator.generateInvoice(
         kid: kid,
         schoolName: schoolName,
         monthName: monthName,
-        isPaidOverride: true,
+        isPaidOverride: isKidPaid,
         breakdownOverride: breakdown,
       );
 
@@ -198,15 +199,17 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF065F46), Color(0xFF059669)],
+                gradient: LinearGradient(
+                  colors: clearedCount == currentKidsList.length
+                      ? const [Color(0xFF065F46), Color(0xFF059669)]
+                      : const [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF059669).withOpacity(0.3),
+                    color: (clearedCount == currentKidsList.length ? const Color(0xFF059669) : const Color(0xFF3B82F6)).withOpacity(0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -220,7 +223,11 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.verified_rounded, color: Colors.white, size: 28),
+                    child: Icon(
+                      clearedCount == currentKidsList.length ? Icons.verified_rounded : Icons.receipt_long_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -230,7 +237,9 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
                         Row(
                           children: [
                             Text(
-                              'Family Month Cleared',
+                              clearedCount == currentKidsList.length
+                                  ? 'Family Month Cleared'
+                                  : 'Verified Child Voucher',
                               style: GoogleFonts.inter(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -238,7 +247,7 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Text('🎉', style: TextStyle(fontSize: 14)),
+                            Text(clearedCount == currentKidsList.length ? '🎉' : '📄', style: const TextStyle(fontSize: 14)),
                           ],
                         ),
                         const SizedBox(height: 2),
@@ -286,6 +295,13 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
                   itemBuilder: (context, idx) {
                     final kid = currentKidsList[idx];
                     final isSelected = (_activeKidIdx == idx);
+                    final kBreakdown = FeeCalculatorService.calculateItemizedFeeBreakdown(
+                      kid,
+                      targetMonthIdx: widget.selectedMonthIdx,
+                      targetYear: widget.selectedYear,
+                      feeSettings: feeSettings,
+                    );
+                    final bool isKidPaid = kBreakdown.isPaid || (kBreakdown.isFullScholarship && kBreakdown.totalPayable <= 0);
 
                     return GestureDetector(
                       onTap: () {
@@ -301,7 +317,7 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
                           color: isSelected ? ThemeColors.primaryPurple : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isSelected ? ThemeColors.primaryPurple : Colors.grey.shade300,
+                            color: isSelected ? ThemeColors.primaryPurple : (isKidPaid ? Colors.grey.shade300 : const Color(0xFFFDE68A)),
                             width: isSelected ? 1.8 : 1,
                           ),
                           boxShadow: [
@@ -332,9 +348,11 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
                             ),
                             const SizedBox(width: 4),
                             Icon(
-                              Icons.check_circle_rounded,
+                              isKidPaid ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
                               size: 14,
-                              color: isSelected ? Colors.greenAccent : const Color(0xFF059669),
+                              color: isSelected
+                                  ? (isKidPaid ? Colors.greenAccent : Colors.amberAccent)
+                                  : (isKidPaid ? const Color(0xFF059669) : const Color(0xFFD97706)),
                             ),
                           ],
                         ),
@@ -347,12 +365,17 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
             ],
 
             // 3. Official Fee Voucher Preview
-            FeeReceiptWidget(
-              kid: activeKid,
-              schoolName: schoolName,
-              monthName: fullMonthTitle,
-              isPaidOverride: true,
-              breakdownOverride: breakdown,
+            Builder(
+              builder: (context) {
+                final bool isThisKidPaid = breakdown.isPaid || (breakdown.isFullScholarship && breakdown.totalPayable <= 0);
+                return FeeReceiptWidget(
+                  kid: activeKid,
+                  schoolName: schoolName,
+                  monthName: fullMonthTitle,
+                  isPaidOverride: isThisKidPaid,
+                  breakdownOverride: breakdown,
+                );
+              },
             ),
             const SizedBox(height: 20),
 

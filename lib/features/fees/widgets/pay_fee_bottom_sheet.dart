@@ -376,6 +376,17 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
                           ],
                         ),
                       ],
+                      if (breakdown.recurringItems.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        for (var fee in breakdown.recurringItems)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(fee['name']?.toString() ?? 'Recurring Fee', style: const TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.w500)),
+                              Text('Rs. ${fee['amount']}', style: const TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                      ],
                       if (breakdown.storeItems.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         for (var item in breakdown.storeItems)

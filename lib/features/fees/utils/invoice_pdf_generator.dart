@@ -120,6 +120,17 @@ class InvoicePdfGenerator {
                         ],
                       ),
                     ),
+                  if (breakdown.recurringItems.isNotEmpty)
+                    ...breakdown.recurringItems.map((fee) => pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(fee['name']?.toString() ?? 'Recurring Fee', style: const pw.TextStyle(fontSize: 11, color: PdfColors.black)),
+                          pw.Text('Rs. ${FeeCalculatorService.parseDouble(fee['amount']).toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 11, color: PdfColors.black)),
+                        ],
+                      ),
+                    )),
                 ],
 
                 // 2. Store Items Section

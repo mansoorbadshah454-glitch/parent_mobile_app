@@ -50,8 +50,8 @@ class ItemizedFeeBreakdown {
 
   bool get isFullScholarship => is100PercentFree;
   String get status => isPaid ? 'paid' : (isPending ? 'pending' : 'unpaid');
-  double get tuitionFee => baseTuition;
-  double get grossBill => baseTuition + transportFee + storeDues + actionFee + penaltyFine;
+  double get otherRecurringTotal => recurringItems.fold(0.0, (sum, f) => sum + FeeCalculatorService.parseDouble(f['amount']));
+  double get grossBill => baseTuition + transportFee + otherRecurringTotal + storeDues + actionFee + penaltyFine;
   List<Map<String, dynamic>> get otherRecurringFees => recurringItems;
   List<Map<String, dynamic>> get actions => customItems;
   bool get fineWaived => penaltyFine == 0;
@@ -223,6 +223,7 @@ class FeeCalculatorService {
     // 1. Base Tuition & Recurring Items
     double baseTuition = parseDouble(kid.tuitionFee);
     final List<Map<String, dynamic>> recurringItems = [];
+    double otherRecurringTotal = 0.0;
 
     if (baseTuition == 0 && kid.feeStructure.isNotEmpty) {
       final tuitionItem = kid.feeStructure.firstWhere(
@@ -242,12 +243,15 @@ class FeeCalculatorService {
     }
 
     for (var f in kid.feeStructure) {
+      final name = f['name']?.toString() ?? 'Recurring Fee';
+      final lower = name.toLowerCase();
       final amt = parseDouble(f['amount']);
-      if (amt > 0) {
+      if (amt > 0 && !lower.contains('tuition') && !lower.contains('transport')) {
         recurringItems.add({
-          'name': f['name']?.toString() ?? 'Recurring Fee',
+          'name': name,
           'amount': amt,
         });
+        otherRecurringTotal += amt;
       }
     }
 
@@ -364,6 +368,12 @@ class FeeCalculatorService {
           }
         }
 
+        // Skip recurring mirror items if already counted in otherRecurringTotal
+        if (act['type'] == 'recurring_fee' || act['isRecurring'] == true ||
+            recurringItems.any((r) => r['name'].toString().toLowerCase() == (act['name'] ?? act['title'] ?? '').toString().toLowerCase())) {
+          continue;
+        }
+
         final isActPaid = act['status']?.toString() == 'paid';
         if (isActPaid) {
           final actMonthKey = act['monthKey']?.toString() ?? '';
@@ -418,7 +428,7 @@ class FeeCalculatorService {
     // Total Calculation
     double totalPayable = is100PercentFree
         ? (storeDues + actionFee)
-        : (tuitionPayable + transportFee + storeDues + actionFee + penaltyFine);
+        : (tuitionPayable + transportFee + otherRecurringTotal + storeDues + actionFee + penaltyFine);
 
     // Paid Settlement Status
     bool isPaid = false;
