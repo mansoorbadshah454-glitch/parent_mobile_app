@@ -63,7 +63,11 @@ final alertsProvider = StreamProvider<List<AlertModel>>((ref) async* {
       .snapshots();
 
   await for (final snapshot in notificationsStream) {
-    final allowedTypes = ['attendance', 'academic', 'performance', 'health', 'behavior', 'hygiene', 'personality', 'celebration', 'alert', 'info', 'result', 'document'];
+    final allowedTypes = [
+      'attendance', 'academic', 'performance', 'health', 'behavior', 
+      'hygiene', 'personality', 'celebration', 'alert', 'info', 
+      'result', 'document', 'fee', 'payment', 'invoice'
+    ];
     
     var alerts = snapshot.docs
         .map((doc) => AlertModel.fromMap(doc.data(), doc.id))

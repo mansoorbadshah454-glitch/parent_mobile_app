@@ -11,28 +11,13 @@ class InvoicePdfGenerator {
     required String schoolName,
     String? monthName,
     bool? isPaidOverride,
+    ItemizedFeeBreakdown? breakdownOverride,
   }) async {
     final pdf = pw.Document();
 
-    bool isPaid = isPaidOverride ?? ((kid.monthlyFeeStatus.isNotEmpty ? kid.monthlyFeeStatus.toLowerCase() : '') == 'paid');
-    double totalRecurring = 0;
-    for (var fee in kid.feeStructure) {
-      totalRecurring += FeeCalculatorService.parseDouble(fee['amount']);
-    }
-
-    double totalActions = 0;
-    double paidActions = 0;
-    for (var action in kid.individualActions) {
-      final actAmount = FeeCalculatorService.parseDouble(action['amount']);
-      totalActions += actAmount;
-      if ((action['status'] ?? '').toString().toLowerCase() == 'paid') {
-        paidActions += actAmount;
-      }
-    }
-
-    double grandTotal = totalRecurring + totalActions;
-    double totalPaid = (isPaid ? totalRecurring : 0) + paidActions;
-    double totalDue = grandTotal - totalPaid;
+    final breakdown = breakdownOverride ?? FeeCalculatorService.calculateItemizedFeeBreakdown(kid);
+    final bool isPaid = isPaidOverride ?? breakdown.isPaid;
+    final String targetMonthDisplay = monthName ?? breakdown.targetMonthName;
 
     pdf.addPage(
       pw.Page(
@@ -59,124 +44,208 @@ class InvoicePdfGenerator {
                     ),
                   ),
                 ),
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 6),
                 pw.Center(
                   child: pw.Text(
-                    'FEE RECEIPT',
+                    'OFFICIAL FEE INVOICE & RECEIPT',
                     style: pw.TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.black,
                       letterSpacing: 2,
                     ),
                   ),
                 ),
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 6),
                 pw.Center(
                   child: pw.Text(
-                    monthName != null ? 'Month: $monthName' : 'Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                    'Student: ${kid.name}  |  Class: ${kid.className}  |  Roll: ${kid.rollNo}',
                     style: const pw.TextStyle(
-                      fontSize: 12,
-                      color: PdfColors.grey700,
+                      fontSize: 11,
+                      color: PdfColors.grey800,
                     ),
                   ),
                 ),
-                pw.SizedBox(height: 24),
+                pw.Center(
+                  child: pw.Text(
+                    'Billing Month: $targetMonthDisplay  |  Issue Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 18),
                 pw.Divider(color: PdfColors.grey400, borderStyle: pw.BorderStyle.dashed),
-                pw.SizedBox(height: 16),
-                
-                // Recurring Fees
-                pw.Text('RECURRING FEES', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-                pw.SizedBox(height: 8),
-                if (kid.feeStructure.isEmpty)
-                  pw.Text('  None', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
-                ...kid.feeStructure.map((f) => pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 4),
-                  child: pw.Row(
+                pw.SizedBox(height: 12),
+
+                // 1. Recurring Fees Section
+                pw.Text('1. MONTHLY TUITION & RECURRING CHARGES', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                pw.SizedBox(height: 6),
+                if (breakdown.is100PercentFree)
+                  pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text(f['name']?.toString() ?? 'Fee', style: const pw.TextStyle(fontSize: 14, color: PdfColors.black)),
-                      pw.Text('Rs ${f['amount']}', style: const pw.TextStyle(fontSize: 14, color: PdfColors.black)),
+                      pw.Text('Tuition Fee (100% Scholarship / Free-Ship)', style: const pw.TextStyle(fontSize: 11, color: PdfColors.green700)),
+                      pw.Text('Rs. 0 (Fully Sponsored)', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                    ],
+                  )
+                else ...[
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Base Tuition Fee', style: const pw.TextStyle(fontSize: 11, color: PdfColors.black)),
+                      pw.Text('Rs. ${breakdown.baseTuition.toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 11, color: PdfColors.black)),
                     ],
                   ),
-                )).toList(),
-                
-                pw.SizedBox(height: 16),
-                
-                // Individual Actions
-                pw.Text('INDIVIDUAL ACTIONS', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-                pw.SizedBox(height: 8),
-                if (kid.individualActions.isEmpty)
-                  pw.Text('  None', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
-                ...kid.individualActions.map((a) {
-                  bool actionPaid = a['status'] == 'paid';
-                  return pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                  if (breakdown.discountAmount > 0)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Concession / Fee Discount', style: const pw.TextStyle(fontSize: 11, color: PdfColors.green700)),
+                          pw.Text('- Rs. ${breakdown.discountAmount.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                        ],
+                      ),
+                    ),
+                  if (breakdown.transportFee > 0)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Transport / Van Charges', style: const pw.TextStyle(fontSize: 11, color: PdfColors.black)),
+                          pw.Text('Rs. ${breakdown.transportFee.toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 11, color: PdfColors.black)),
+                        ],
+                      ),
+                    ),
+                ],
+
+                // 2. Store Items Section
+                if (breakdown.storeItems.isNotEmpty) ...[
+                  pw.SizedBox(height: 12),
+                  pw.Text('2. STORE CHARGES (UNIFORM & BOOKS THIS MONTH)', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                  pw.SizedBox(height: 6),
+                  ...breakdown.storeItems.map((item) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
                     child: pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Expanded(
-                          child: pw.Text(
-                            '${a['name']} (${actionPaid ? 'paid' : 'unpaid'})', 
-                            style: pw.TextStyle(fontSize: 14, color: actionPaid ? PdfColors.green700 : PdfColors.black)
-                          )
-                        ),
-                        pw.Text('Rs ${a['amount']}', style: pw.TextStyle(fontSize: 14, color: actionPaid ? PdfColors.green700 : PdfColors.black)),
+                        pw.Text(item['name']?.toString() ?? 'Store Item', style: const pw.TextStyle(fontSize: 10, color: PdfColors.black)),
+                        pw.Text('Rs. ${FeeCalculatorService.parseDouble(item['amount']).toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.black)),
                       ],
                     ),
-                  );
-                }).toList(),
-                
-                pw.SizedBox(height: 16),
+                  )),
+                ],
+
+                // 3. Custom Actions Section
+                if (breakdown.customItems.isNotEmpty) ...[
+                  pw.SizedBox(height: 12),
+                  pw.Text('3. SPECIAL ACTIONS & EXAMS (THIS MONTH)', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                  pw.SizedBox(height: 6),
+                  ...breakdown.customItems.map((item) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(item['name']?.toString() ?? 'Action', style: const pw.TextStyle(fontSize: 10, color: PdfColors.black)),
+                        pw.Text('Rs. ${FeeCalculatorService.parseDouble(item['amount']).toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.black)),
+                      ],
+                    ),
+                  )),
+                ],
+
+                if (breakdown.penaltyFine > 0) ...[
+                  pw.SizedBox(height: 8),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Late Payment Penalty', style: const pw.TextStyle(fontSize: 11, color: PdfColors.red700)),
+                      pw.Text('Rs. ${breakdown.penaltyFine.toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 11, color: PdfColors.red700)),
+                    ],
+                  ),
+                ],
+
+                pw.SizedBox(height: 14),
                 pw.Divider(color: PdfColors.grey400, borderStyle: pw.BorderStyle.dashed),
-                pw.SizedBox(height: 16),
-                
+                pw.SizedBox(height: 10),
+
                 // Totals
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('TOTAL BILL', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
-                    pw.Text('Rs $grandTotal', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+                    pw.Text('TOTAL INVOICE AMOUNT', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                    pw.Text('Rs. ${breakdown.totalPayable.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
                   ],
                 ),
-                pw.SizedBox(height: 8),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('PAID AMOUNT', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
-                    pw.Text('- Rs $totalPaid', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
-                  ],
-                ),
+                if (isPaid) ...[
+                  pw.SizedBox(height: 6),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('SETTLED / PAID AMOUNT', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                      pw.Text('- Rs. ${(breakdown.paidAmount > 0 ? breakdown.paidAmount : breakdown.totalPayable).toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                    ],
+                  ),
+                ],
+
                 pw.SizedBox(height: 8),
                 pw.Divider(color: PdfColors.grey400, borderStyle: pw.BorderStyle.dashed),
-                pw.SizedBox(height: 16),
+                pw.SizedBox(height: 10),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('AMOUNT DUE', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-                    pw.Text('Rs $totalDue', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: totalDue > 0 ? PdfColors.red700 : PdfColors.green700)),
+                    pw.Text('NET BALANCE DUE', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                    pw.Text(
+                      isPaid ? 'Rs. 0' : 'Rs. ${breakdown.totalPayable.toStringAsFixed(0)}',
+                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: isPaid ? PdfColors.green700 : PdfColors.red700),
+                    ),
                   ],
                 ),
-                
-                pw.SizedBox(height: 32),
-                pw.Align(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: isPaid ? PdfColors.green : PdfColors.red, width: 2),
-                      borderRadius: pw.BorderRadius.circular(8),
-                    ),
-                    child: pw.Text(
-                      isPaid ? 'PAID' : 'UNPAID',
-                      style: pw.TextStyle(
-                        color: isPaid ? PdfColors.green : PdfColors.red,
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 18,
-                        letterSpacing: 2,
+
+                pw.SizedBox(height: 24),
+
+                // Settlement Badge & Verification Box
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: isPaid ? PdfColors.green : PdfColors.red, width: 1.5),
+                    borderRadius: pw.BorderRadius.circular(8),
+                    color: isPaid ? const PdfColor.fromInt(0xFFECFDF5) : const PdfColor.fromInt(0xFFFEF2F2),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            isPaid ? 'STATUS: PAID & VERIFIED ✓' : 'STATUS: PAYMENT DUE / UNPAID',
+                            style: pw.TextStyle(
+                              color: isPaid ? PdfColors.green800 : PdfColors.red800,
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (isPaid && breakdown.receiptNo != null)
+                            pw.Text(
+                              'Receipt No: ${breakdown.receiptNo} | Mode: ${breakdown.paymentMode ?? 'Online Transfer'}',
+                              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                            ),
+                        ],
                       ),
-                    ),
+                      pw.Text(
+                        isPaid ? 'CLEARED' : 'PENDING',
+                        style: pw.TextStyle(
+                          color: isPaid ? PdfColors.green700 : PdfColors.red700,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 14,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -187,7 +256,7 @@ class InvoicePdfGenerator {
     );
 
     final dir = await getTemporaryDirectory();
-    final fileName = monthName != null ? 'Invoice_${monthName}_${DateTime.now().millisecondsSinceEpoch}.pdf' : 'Invoice_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final fileName = 'Invoice_${kid.name.replaceAll(' ', '_')}_${targetMonthDisplay.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(await pdf.save());
     return file;

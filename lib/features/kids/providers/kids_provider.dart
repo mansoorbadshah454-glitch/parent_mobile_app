@@ -17,6 +17,8 @@ class KidData {
   final String? resultFileName;
   final List<Map<String, dynamic>> feeStructure;
   final List<Map<String, dynamic>> individualActions;
+  final List<Map<String, dynamic>> storeCharges;
+  final Map<String, dynamic> monthlyFeeHistory;
   final Map<String, dynamic>? activeLeave;
   final Map<String, dynamic>? pendingPaymentSubmission;
   final String? lastPaymentProofUrl;
@@ -25,6 +27,12 @@ class KidData {
   final int previousMonthsUnpaidCount;
   final String? admissionDate;
   final bool lastPaymentFineWaived;
+  final bool isScholarship;
+  final bool isFreeShip;
+  final String? concessionType;
+  final dynamic feeDiscount;
+  final dynamic transportFee;
+  final dynamic tuitionFee;
 
   KidData({
     required this.id,
@@ -41,6 +49,8 @@ class KidData {
     this.resultFileName,
     this.feeStructure = const [],
     this.individualActions = const [],
+    this.storeCharges = const [],
+    this.monthlyFeeHistory = const {},
     this.activeLeave,
     this.pendingPaymentSubmission,
     this.lastPaymentProofUrl,
@@ -49,6 +59,12 @@ class KidData {
     this.previousMonthsUnpaidCount = 0,
     this.admissionDate,
     this.lastPaymentFineWaived = false,
+    this.isScholarship = false,
+    this.isFreeShip = false,
+    this.concessionType,
+    this.feeDiscount,
+    this.transportFee,
+    this.tuitionFee,
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -67,6 +83,23 @@ class KidData {
         for (var item in map['individualActions']) {
           if (item is Map) parsedIndividualActions.add(Map<String, dynamic>.from(item));
         }
+      }
+
+      List<Map<String, dynamic>> parsedStoreCharges = [];
+      if (map['storeCharges'] is List) {
+        for (var item in map['storeCharges']) {
+          if (item is Map) parsedStoreCharges.add(Map<String, dynamic>.from(item));
+        }
+      }
+
+      Map<String, dynamic> parsedMonthlyFeeHistory = {};
+      if (map['monthlyFeeHistory'] is Map) {
+        final rawHist = map['monthlyFeeHistory'] as Map;
+        rawHist.forEach((k, v) {
+          if (v is Map) {
+            parsedMonthlyFeeHistory[k.toString()] = Map<String, dynamic>.from(v);
+          }
+        });
       }
 
       Map<String, dynamic>? parsedActiveLeave;
@@ -91,6 +124,10 @@ class KidData {
       int parsedPrevUnpaid = int.tryParse(map['previousMonthsUnpaidCount']?.toString() ?? '') ??
           int.tryParse(map['unpaidMonthsCount']?.toString() ?? '') ?? 0;
 
+      final bool isScholarshipVal = map['isScholarship'] == true ||
+          map['isFreeShip'] == true ||
+          (map['concessionType']?.toString().toLowerCase() == 'free');
+
     return KidData(
       id: id,
       name: map['name'] ?? '${map['firstName'] ?? ''} ${map['lastName'] ?? ''}'.trim(),
@@ -110,6 +147,8 @@ class KidData {
       resultFileName: map['resultCardName']?.toString() ?? (map['uploadedResultType'] != null ? 'result.${map['uploadedResultType']}' : 'result_card.pdf'),
       feeStructure: parsedFeeStructure,
       individualActions: parsedIndividualActions,
+      storeCharges: parsedStoreCharges,
+      monthlyFeeHistory: parsedMonthlyFeeHistory,
       activeLeave: parsedActiveLeave,
       pendingPaymentSubmission: parsedPendingPayment,
       lastPaymentProofUrl: map['lastPaymentProofUrl']?.toString(),
@@ -118,6 +157,12 @@ class KidData {
       previousMonthsUnpaidCount: parsedPrevUnpaid,
       admissionDate: map['admissionDate']?.toString(),
       lastPaymentFineWaived: map['lastPaymentFineWaived'] == true,
+      isScholarship: isScholarshipVal,
+      isFreeShip: map['isFreeShip'] == true,
+      concessionType: map['concessionType']?.toString(),
+      feeDiscount: map['feeDiscount'] ?? map['discount'],
+      transportFee: map['transportFee'] ?? map['monthlyTransportFee'],
+      tuitionFee: map['tuitionFee'] ?? map['monthlyFee'] ?? map['fee'],
     );
   }
 

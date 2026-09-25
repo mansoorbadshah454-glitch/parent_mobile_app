@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/theme_colors.dart';
 import '../../kids/providers/kids_provider.dart';
 import '../../../core/providers/parent_data_provider.dart';
+import '../providers/fee_settings_provider.dart';
+import '../services/fee_calculator_service.dart';
 import '../widgets/downloadable_invoice.dart';
 import '../widgets/pay_fee_bottom_sheet.dart';
 import '../widgets/yearly_fee_calendar.dart';
@@ -23,19 +25,25 @@ class DetailedInvoiceScreen extends ConsumerWidget {
     final parentDataAsync = ref.watch(parentDataProvider);
     final String schoolName = parentDataAsync.value?.schoolName ?? 'School';
 
+    final feeSettingsAsync = ref.watch(feeSettingsProvider);
+    final feeSettings = feeSettingsAsync.value ?? <String, dynamic>{};
+
     final int currentYear = DateTime.now().year;
     final String fullMonthTitle = '${month.monthName} $currentYear';
 
-    final bool isPaid = month.status == FeeStatus.paid;
-    final bool isOverdue = month.status == FeeStatus.overdue;
-    final bool isPending = month.status == FeeStatus.pending;
-    final bool isUpcoming = month.status == FeeStatus.upcoming;
+    // Calculate fresh SSOT breakdown for this target month
+    final breakdown = FeeCalculatorService.calculateItemizedFeeBreakdown(
+      currentKid,
+      targetMonthIdx: month.monthNumber - 1,
+      targetYear: currentYear,
+      feeSettings: feeSettings,
+    );
 
-    // Check if there is an active pending submission for this month
-    final pendingMap = currentKid.pendingPaymentSubmission;
-    final bool isThisMonthPendingVerification = pendingMap != null &&
-        (pendingMap['status'] ?? '').toString() == 'pending' &&
-        (pendingMap['month']?.toString().toLowerCase().contains(month.monthName.toLowerCase()) ?? false);
+    final bool isPaid = breakdown.isPaid || month.status == FeeStatus.paid;
+    final bool isScholarship = breakdown.is100PercentFree && breakdown.storeDues == 0 && breakdown.actionFee == 0;
+    final bool isOverdue = month.status == FeeStatus.overdue && !isPaid;
+    final bool isPending = breakdown.isPending || (month.status == FeeStatus.pending && !isPaid);
+    final bool isUpcoming = month.status == FeeStatus.upcoming && !isPaid;
 
     return Scaffold(
       backgroundColor: ThemeColors.backgroundColor,
@@ -57,16 +65,7 @@ class DetailedInvoiceScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Visual Invoice Widget with PDF Download
-            DownloadableInvoice(
-              kid: currentKid,
-              schoolName: schoolName,
-              monthName: fullMonthTitle,
-              isPaid: isPaid,
-            ),
-            const SizedBox(height: 24),
-
-            // Contextual Payment & Status Action Card
+            // 1. Contextual Payment & Status Action Card (At the TOP)
             if (isPaid) ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -83,7 +82,7 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                         color: Color(0xFF10B981),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check, color: Colors.white, size: 20),
+                      child: const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -91,21 +90,30 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Fee Paid & Cleared',
+                            isScholarship ? '100% Scholarship Enrolled' : 'Fee Paid & Cleared',
                             style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF065F46)),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'The fee for $fullMonthTitle has been cleared and verified.',
-                            style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF047857)),
+                            isScholarship
+                                ? 'Tuition fee for $fullMonthTitle is 100% sponsored by the administration.'
+                                : 'The fee for $fullMonthTitle has been cleared and verified successfully.',
+                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF047857)),
                           ),
+                          if (breakdown.receiptNo != null && breakdown.receiptNo!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Receipt: ${breakdown.receiptNo} • Mode: ${breakdown.paymentMode ?? 'Online'}',
+                              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF059669)),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ] else if (isThisMonthPendingVerification) ...[
+            ] else if (breakdown.isPending) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -127,7 +135,7 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Payment proof for $fullMonthTitle is currently being verified by the principal.',
+                            'Payment proof for $fullMonthTitle is currently being verified by the school administration.',
                             style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFB45309)),
                           ),
                         ],
@@ -171,7 +179,7 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'Rs. ${month.amount.toStringAsFixed(0)}',
+                            'Rs. ${breakdown.totalPayable.toStringAsFixed(0)}',
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -184,14 +192,14 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     Text(
                       isOverdue
-                          ? 'This month\'s fee is past due. Please submit your payment slip to avoid penalties.'
+                          ? 'This month\'s fee is past due. Please submit your payment slip to keep your record in good standing.'
                           : 'Kindly clear this month\'s dues before the due date.',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: isOverdue ? Colors.red.shade800 : Colors.orange.shade800,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -199,13 +207,13 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                           PayFeeBottomSheet.show(
                             context,
                             currentKid,
-                            month.amount,
+                            breakdown.totalPayable,
                             feeMonth: fullMonthTitle,
                           );
                         },
                         icon: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
                         label: Text(
-                          'Pay Fee for ${month.monthName} (Rs. ${month.amount.toStringAsFixed(0)})',
+                          'Pay Fee for ${month.monthName} (Rs. ${breakdown.totalPayable.toStringAsFixed(0)})',
                           style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -252,6 +260,16 @@ class DetailedInvoiceScreen extends ConsumerWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 20),
+
+            // 2. Visual Invoice Widget with Compact PDF Download Button
+            DownloadableInvoice(
+              kid: currentKid,
+              schoolName: schoolName,
+              monthName: fullMonthTitle,
+              isPaid: isPaid,
+              breakdown: breakdown,
+            ),
             const SizedBox(height: 30),
           ],
         ),

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/parent_data_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../kids/providers/kids_provider.dart';
+import '../services/fee_calculator_service.dart';
 
 class PayFeeBottomSheet extends ConsumerStatefulWidget {
   final KidData kid;
@@ -125,6 +126,12 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
           .collection('paymentSubmissions')
           .doc();
 
+      final breakdown = FeeCalculatorService.calculateItemizedFeeBreakdown(
+        widget.kid,
+        targetMonthKey: widget.feeMonth,
+      );
+      final double effectiveAmount = breakdown.totalPayable > 0 ? breakdown.totalPayable : widget.totalAmount;
+
       final submissionData = <String, dynamic>{
         'id': submissionRef.id,
         'schoolId': schoolId,
@@ -136,7 +143,7 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
         'parentId': parentData?.uid ?? '',
         'parentName': parentData?.name ?? '',
         'parentPhone': parentData?.phone ?? '',
-        'amount': widget.totalAmount,
+        'amount': effectiveAmount,
         'paymentMethod': paymentMethod,
         'accountNumberPaidTo': accountNo,
         'accountTitlePaidTo': accountTitle,
@@ -152,7 +159,7 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
       // 3. Update student doc with pending status
       final pendingMap = <String, dynamic>{
         'status': 'pending',
-        'amount': widget.totalAmount,
+        'amount': effectiveAmount,
         'paymentMethod': paymentMethod,
         'transactionId': _trxController.text.trim(),
         'proofUrl': downloadUrl,
@@ -280,51 +287,141 @@ class _PayFeeBottomSheetState extends ConsumerState<PayFeeBottomSheet> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: ThemeColors.primaryPurple.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Rs. ${widget.totalAmount.toStringAsFixed(0)}',
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: ThemeColors.primaryPurple,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final breakdown = FeeCalculatorService.calculateItemizedFeeBreakdown(
+                      widget.kid,
+                      targetMonthKey: widget.feeMonth,
+                    );
+                    final double effectiveAmount = breakdown.totalPayable > 0 ? breakdown.totalPayable : widget.totalAmount;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ThemeColors.primaryPurple.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Rs. ${effectiveAmount.toStringAsFixed(0)}',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeColors.primaryPurple,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            if (widget.feeMonth != null && widget.feeMonth!.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFD8B4FE)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_month_rounded, size: 18, color: ThemeColors.primaryPurple),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Fee Month: ${widget.feeMonth}',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: ThemeColors.primaryPurple,
+            // Itemized Breakdown Card
+            Builder(
+              builder: (context) {
+                final breakdown = FeeCalculatorService.calculateItemizedFeeBreakdown(
+                  widget.kid,
+                  targetMonthKey: widget.feeMonth,
+                );
+
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Fee Breakdown (${widget.feeMonth ?? breakdown.monthKey}):',
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                          ),
+                          Text(
+                            'Total: Rs. ${breakdown.totalPayable.toStringAsFixed(0)}',
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeColors.primaryPurple),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Base Tuition', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                          Text('Rs. ${breakdown.tuitionFee.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                        ],
+                      ),
+                      if (breakdown.discountAmount > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(breakdown.concessionName.isNotEmpty ? breakdown.concessionName : 'Discount',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.bold)),
+                            Text('- Rs. ${breakdown.discountAmount.toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
+                      if (breakdown.transportFee > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Transport Fee', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                            Text('Rs. ${breakdown.transportFee.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                          ],
+                        ),
+                      ],
+                      if (breakdown.storeItems.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        for (var item in breakdown.storeItems)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item['name']} (Store)',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B21A8)),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('Rs. ${item['amount']}', style: const TextStyle(fontSize: 12, color: Color(0xFF6B21A8), fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                      ],
+                      if (breakdown.actions.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        for (var act in breakdown.actions)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${act['name']} (Exam/Charge)',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF)),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('Rs. ${act['amount']}', style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF), fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
 
             // Step 1: Select School Account to Transfer To
             Text(

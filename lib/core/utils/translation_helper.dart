@@ -211,9 +211,13 @@ class TranslationHelper {
       final date = match.group(3) ?? '';
       
       String statusUrd = statusEng;
-      if (statusEng.contains('present')) statusUrd = 'حاضر';
-      else if (statusEng.contains('absent')) statusUrd = 'غیر حاضر';
-      else if (statusEng.contains('holiday')) statusUrd = 'چھٹی';
+      if (statusEng.contains('present')) {
+        statusUrd = 'حاضر';
+      } else if (statusEng.contains('absent')) {
+        statusUrd = 'غیر حاضر';
+      } else if (statusEng.contains('holiday')) {
+        statusUrd = 'چھٹی';
+      }
 
       translatedText = "$name کو آج سکول میں $statusUrd قرار دیا گیا ہے، تاریخ: $date۔";
       return translatedText; // Return early to prevent double translation
