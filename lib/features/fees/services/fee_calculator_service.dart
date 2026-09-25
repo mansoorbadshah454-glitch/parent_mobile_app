@@ -50,6 +50,7 @@ class ItemizedFeeBreakdown {
 
   bool get isFullScholarship => is100PercentFree;
   String get status => isPaid ? 'paid' : (isPending ? 'pending' : 'unpaid');
+  double get tuitionFee => baseTuition;
   double get otherRecurringTotal => recurringItems.fold(0.0, (sum, f) => sum + FeeCalculatorService.parseDouble(f['amount']));
   double get grossBill => baseTuition + transportFee + otherRecurringTotal + storeDues + actionFee + penaltyFine;
   List<Map<String, dynamic>> get otherRecurringFees => recurringItems;

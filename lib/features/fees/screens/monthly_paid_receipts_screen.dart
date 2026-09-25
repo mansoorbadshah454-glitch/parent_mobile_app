@@ -129,8 +129,6 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
       feeSettings: feeSettings,
     );
 
-    // Calculate total family paid amount for this month
-    double totalFamilyPaid = 0.0;
     int clearedCount = 0;
     for (final k in currentKidsList) {
       final b = FeeCalculatorService.calculateItemizedFeeBreakdown(
@@ -141,7 +139,6 @@ class _MonthlyPaidReceiptsScreenState extends ConsumerState<MonthlyPaidReceiptsS
       );
       if (b.isPaid || (b.isFullScholarship && b.totalPayable <= 0)) {
         clearedCount++;
-        totalFamilyPaid += b.totalPayable;
       }
     }
 
