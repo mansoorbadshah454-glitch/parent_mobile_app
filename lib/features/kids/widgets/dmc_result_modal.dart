@@ -12,22 +12,30 @@ import '../providers/exam_results_provider.dart';
 import '../utils/result_card_pdf_generator.dart';
 
 class DmcResultModal extends ConsumerStatefulWidget {
-  final StudentExamResult result;
+  final StudentExamResult? result;
+  final ConsolidatedExamResult? consolidated;
   final String schoolName;
 
   const DmcResultModal({
     Key? key,
-    required this.result,
+    this.result,
+    this.consolidated,
     required this.schoolName,
   }) : super(key: key);
 
-  static void show(BuildContext context, StudentExamResult result, String schoolName) {
+  static void show(
+    BuildContext context, {
+    StudentExamResult? result,
+    ConsolidatedExamResult? consolidated,
+    required String schoolName,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DmcResultModal(
         result: result,
+        consolidated: consolidated,
         schoolName: schoolName,
       ),
     );
@@ -46,18 +54,33 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
       final parentData = ref.read(parentDataProvider).value;
       final schoolLogo = parentData?.schoolLogo;
 
-      final pdfFile = await ResultCardPdfGenerator.generateDmcPdf(
-        result: widget.result,
-        schoolName: widget.schoolName,
-        schoolLogoUrl: schoolLogo,
-      );
+      if (widget.consolidated != null) {
+        final pdfFile = await ResultCardPdfGenerator.generateConsolidatedDmcPdf(
+          consolidated: widget.consolidated!,
+          schoolName: widget.schoolName,
+          schoolLogoUrl: schoolLogo,
+        );
 
-      if (!mounted) return;
-      final xFile = XFile(pdfFile.path);
-      await Share.shareXFiles(
-        [xFile],
-        text: '${widget.result.studentName} - ${widget.result.examTitle} DMC Result Card',
-      );
+        if (!mounted) return;
+        final xFile = XFile(pdfFile.path);
+        await Share.shareXFiles(
+          [xFile],
+          text: '${widget.consolidated!.studentName} - Annual Consolidated (3-in-1) Result Card',
+        );
+      } else if (widget.result != null) {
+        final pdfFile = await ResultCardPdfGenerator.generateDmcPdf(
+          result: widget.result!,
+          schoolName: widget.schoolName,
+          schoolLogoUrl: schoolLogo,
+        );
+
+        if (!mounted) return;
+        final xFile = XFile(pdfFile.path);
+        await Share.shareXFiles(
+          [xFile],
+          text: '${widget.result!.studentName} - ${widget.result!.examTitle} DMC Result Card',
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -76,8 +99,11 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
     final lang = ref.watch(languageProvider);
     final parentData = ref.watch(parentDataProvider).value;
     final schoolLogo = parentData?.schoolLogo;
+    final isConsolidated = widget.consolidated != null;
     final res = widget.result;
-    final isPassed = res.isPassed;
+    final cons = widget.consolidated;
+    final isPassed = isConsolidated ? (cons?.isPassed ?? true) : (res?.isPassed ?? true);
+    final examTitle = isConsolidated ? 'Annual Consolidated (3-in-1)' : (res?.examTitle ?? 'Exam Result');
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
@@ -142,8 +168,8 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        res.examTitle,
-                        style: GoogleFonts.montserrat(
+                        examTitle,
+                        style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
@@ -153,7 +179,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                       ),
                       Text(
                         widget.schoolName,
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.inter(
                           fontSize: 13,
                           color: Colors.grey.shade600,
                           fontWeight: FontWeight.w500,
@@ -192,22 +218,34 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _studentMetaCol('Student Name', res.studentName),
-                            _studentMetaCol('Roll No', res.rollNumber),
+                            _studentMetaCol(
+                              'Student Name',
+                              isConsolidated ? (cons?.studentName ?? '') : (res?.studentName ?? ''),
+                            ),
+                            _studentMetaCol(
+                              'Roll No',
+                              isConsolidated ? (cons?.rollNumber ?? '') : (res?.rollNumber ?? ''),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _studentMetaCol('Class', res.className),
+                            _studentMetaCol(
+                              'Class',
+                              isConsolidated ? (cons?.className ?? '') : (res?.className ?? ''),
+                            ),
                             _studentMetaCol(
                               'Position in Class',
-                              (res.position.isNotEmpty && res.position != '-') ? res.position : 'N/A',
+                              isConsolidated
+                                  ? (cons?.position.isNotEmpty == true && cons!.position != '-' ? cons.position : 'N/A')
+                                  : (res?.position.isNotEmpty == true && res!.position != '-' ? res.position : 'N/A'),
                             ),
                           ],
                         ),
-                        if (res.attendance.isNotEmpty && res.attendance != '-') ...[
+                        if ((isConsolidated ? cons?.attendance : res?.attendance)?.isNotEmpty == true &&
+                            (isConsolidated ? cons?.attendance : res?.attendance) != '-') ...[
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -231,7 +269,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    res.attendance,
+                                    isConsolidated ? cons!.attendance : res!.attendance,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -275,11 +313,24 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _statBox('Total Marks', '${res.totalObtained} / ${res.totalMax}'),
+                            _statBox(
+                              'Total Marks',
+                              isConsolidated
+                                  ? '${cons?.grandTotalObtained ?? 0} / ${cons?.grandTotalMax ?? 0}'
+                                  : '${res?.totalObtained ?? 0} / ${res?.totalMax ?? 0}',
+                            ),
                             Container(width: 1, height: 36, color: Colors.white24),
-                            _statBox('Percentage', '${res.percentage.toStringAsFixed(1)}%'),
+                            _statBox(
+                              'Percentage',
+                              isConsolidated
+                                  ? '${cons?.overallPercentage.toStringAsFixed(1) ?? 0}%'
+                                  : '${res?.percentage.toStringAsFixed(1) ?? 0}%',
+                            ),
                             Container(width: 1, height: 36, color: Colors.white24),
-                            _statBox('Grade', res.grade),
+                            _statBox(
+                              'Grade',
+                              isConsolidated ? (cons?.overallGrade ?? '-') : (res?.grade ?? '-'),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -290,8 +341,8 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            res.statusLabel.toUpperCase(),
-                            style: GoogleFonts.montserrat(
+                            (isConsolidated ? cons?.statusLabel : res?.statusLabel)?.toUpperCase() ?? 'PASSED',
+                            style: GoogleFonts.inter(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
@@ -311,8 +362,10 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                       const Icon(Icons.menu_book_rounded, size: 20, color: ThemeColors.primaryPurple),
                       const SizedBox(width: 8),
                       Text(
-                        TranslationHelper.translate('Subject Breakdown', lang),
-                        style: GoogleFonts.montserrat(
+                        isConsolidated
+                            ? TranslationHelper.translate('3-Terms Consolidated Subjects', lang)
+                            : TranslationHelper.translate('Subject Breakdown', lang),
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
@@ -323,13 +376,123 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                   const SizedBox(height: 12),
 
                   // Subject Marks List
-                  if (res.subjectMarks.isEmpty)
+                  if (isConsolidated)
+                    if (cons == null || cons.subjects.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'No multi-term subject marks recorded.',
+                          style: GoogleFonts.inter(color: Colors.grey),
+                        ),
+                      )
+                    else
+                      ...cons.subjects.entries.map((entry) {
+                        final subj = entry.value;
+                        final isSubjPass = subj.percentage >= 33;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: isSubjPass ? Colors.green.shade50 : Colors.red.shade50,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      subj.grade,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: isSubjPass ? Colors.green.shade800 : Colors.red.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      entry.key,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${subj.totalObtained} / ${subj.totalMax}',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: isSubjPass ? Colors.black87 : Colors.red.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Term-wise breakdown pills
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: cons.activeTerms.map((term) {
+                                  final termScore = subj.terms[term.id];
+                                  final shortTerm = term.title
+                                      .replaceAll(' Examination', '')
+                                      .replaceAll(' 2026', '');
+                                  final obtStr = termScore == null
+                                      ? '—'
+                                      : (termScore.isAbsent ? 'ABS' : '${termScore.obtained ?? '-'}');
+                                  final gradeStr = termScore?.grade ?? '-';
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.purple.shade100),
+                                    ),
+                                    child: Text(
+                                      '$shortTerm: $obtStr ($gradeStr)',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.purple.shade900,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList()
+                  else if (res == null || res.subjectMarks.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       alignment: Alignment.center,
                       child: Text(
                         'No detailed subject marks recorded.',
-                        style: GoogleFonts.montserrat(color: Colors.grey),
+                        style: GoogleFonts.inter(color: Colors.grey),
                       ),
                     )
                   else
@@ -359,14 +522,14 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                               height: 38,
                               decoration: BoxDecoration(
                                 color: (s.isAbsent
-                                        ? Colors.red.shade50
-                                        : (isSubjPass ? Colors.green.shade50 : Colors.red.shade50)),
+                                    ? Colors.red.shade50
+                                    : (isSubjPass ? Colors.green.shade50 : Colors.red.shade50)),
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
                               child: Text(
                                 s.grade,
-                                style: GoogleFonts.montserrat(
+                                style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: s.isAbsent ? Colors.red : (isSubjPass ? Colors.green.shade800 : Colors.red.shade800),
@@ -380,7 +543,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                                 children: [
                                   Text(
                                     entry.key,
-                                    style: GoogleFonts.montserrat(
+                                    style: GoogleFonts.inter(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                       color: Colors.black87,
@@ -389,7 +552,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                                   if (s.remarks.isNotEmpty)
                                     Text(
                                       s.remarks,
-                                      style: GoogleFonts.montserrat(
+                                      style: GoogleFonts.inter(
                                         fontSize: 11,
                                         color: Colors.grey.shade600,
                                       ),
@@ -402,7 +565,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                               children: [
                                 Text(
                                   s.isAbsent ? 'ABSENT' : '${s.obtained ?? '-'} / ${s.totalMarks}',
-                                  style: GoogleFonts.montserrat(
+                                  style: GoogleFonts.inter(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                     color: s.isAbsent ? Colors.red : Colors.black87,
@@ -410,7 +573,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                                 ),
                                 Text(
                                   'Pass: ${s.passingMarks}',
-                                  style: GoogleFonts.montserrat(
+                                  style: GoogleFonts.inter(
                                     fontSize: 11,
                                     color: Colors.grey.shade500,
                                   ),
@@ -462,7 +625,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
                   _isGeneratingPdf
                       ? TranslationHelper.translate('Generating DMC PDF...', lang)
                       : TranslationHelper.translate('Download & Share DMC PDF', lang),
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -487,12 +650,12 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
       children: [
         Text(
           label,
-          style: GoogleFonts.montserrat(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+          style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 2),
         Text(
           value.isNotEmpty ? value : '-',
-          style: GoogleFonts.montserrat(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
         ),
       ],
     );
@@ -503,7 +666,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
       children: [
         Text(
           val,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -512,7 +675,7 @@ class _DmcResultModalState extends ConsumerState<DmcResultModal> {
         const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.inter(
             fontSize: 11,
             color: Colors.white70,
           ),

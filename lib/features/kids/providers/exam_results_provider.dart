@@ -103,19 +103,19 @@ class StudentExamResult {
     }
 
     return StudentExamResult(
-      examId: map['examId']?.toString() ?? id,
-      examTitle: map['examTitle']?.toString() ?? 'Exam Result',
-      classId: map['classId']?.toString() ?? '',
-      className: map['className']?.toString() ?? '',
-      studentId: map['studentId']?.toString() ?? '',
-      studentName: map['studentName']?.toString() ?? '',
-      rollNumber: map['rollNumber']?.toString() ?? '',
-      fatherName: map['fatherName']?.toString() ?? '',
-      totalObtained: num.tryParse(map['totalObtained']?.toString() ?? '0') ?? 0,
-      totalMax: num.tryParse(map['totalMax']?.toString() ?? '0') ?? 0,
-      percentage: num.tryParse(map['percentage']?.toString() ?? '0') ?? 0,
-      grade: map['grade']?.toString() ?? '-',
-      position: map['position']?.toString() ?? '-',
+      examId: (map['examId'] ?? id).toString(),
+      examTitle: (map['examTitle'] ?? map['title'] ?? map['examName'] ?? 'Exam Result').toString(),
+      classId: (map['classId'] ?? '').toString(),
+      className: (map['className'] ?? '').toString(),
+      studentId: (map['studentId'] ?? '').toString(),
+      studentName: (map['studentName'] ?? map['name'] ?? map['fullName'] ?? '').toString(),
+      rollNumber: (map['rollNumber'] ?? map['rollNo'] ?? '').toString(),
+      fatherName: (map['fatherName'] ?? map['father'] ?? '').toString(),
+      totalObtained: num.tryParse((map['totalObtained'] ?? map['obtainedMarks'] ?? map['totalScore'] ?? '0').toString()) ?? 0,
+      totalMax: num.tryParse((map['totalMax'] ?? map['maxMarks'] ?? map['totalPossible'] ?? '0').toString()) ?? 0,
+      percentage: num.tryParse((map['percentage'] ?? map['pct'] ?? '0').toString()) ?? 0,
+      grade: (map['grade'] ?? '-').toString(),
+      position: (map['position'] ?? map['rank'] ?? '-').toString(),
       attendance: (map['attendance'] != null && map['attendance'].toString().isNotEmpty)
           ? map['attendance'].toString()
           : (map['attendanceDays'] != null
@@ -148,10 +148,233 @@ class ExamTermItem {
     this.isPublished = false,
     this.result,
   });
+
+  ExamTermItem copyWith({
+    String? id,
+    String? title,
+    String? session,
+    String? description,
+    String? status,
+    bool? isPublished,
+    StudentExamResult? result,
+  }) {
+    return ExamTermItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      session: session ?? this.session,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      isPublished: isPublished ?? this.isPublished,
+      result: result ?? this.result,
+    );
+  }
+}
+
+class SubjectTermScore {
+  final num? obtained;
+  final num totalMarks;
+  final num passingMarks;
+  final String grade;
+  final String remarks;
+  final bool isAbsent;
+
+  SubjectTermScore({
+    this.obtained,
+    this.totalMarks = 100,
+    this.passingMarks = 33,
+    this.grade = '-',
+    this.remarks = '',
+    this.isAbsent = false,
+  });
+}
+
+class ConsolidatedSubjectInfo {
+  final String subjectName;
+  final Map<String, SubjectTermScore> terms;
+  final num totalObtained;
+  final num totalMax;
+  final num percentage;
+  final String grade;
+  final String remarks;
+
+  ConsolidatedSubjectInfo({
+    required this.subjectName,
+    required this.terms,
+    required this.totalObtained,
+    required this.totalMax,
+    required this.percentage,
+    required this.grade,
+    this.remarks = '',
+  });
+}
+
+class ConsolidatedExamResult {
+  final String session;
+  final String studentName;
+  final String rollNumber;
+  final String className;
+  final String fatherName;
+  final List<ExamTermItem> activeTerms;
+  final Map<String, ConsolidatedSubjectInfo> subjects;
+  final num grandTotalObtained;
+  final num grandTotalMax;
+  final num overallPercentage;
+  final String overallGrade;
+  final String position;
+  final String attendance;
+  final bool isPassed;
+  final String statusLabel;
+
+  ConsolidatedExamResult({
+    required this.session,
+    required this.studentName,
+    required this.rollNumber,
+    required this.className,
+    required this.fatherName,
+    required this.activeTerms,
+    required this.subjects,
+    required this.grandTotalObtained,
+    required this.grandTotalMax,
+    required this.overallPercentage,
+    required this.overallGrade,
+    required this.position,
+    required this.attendance,
+    required this.isPassed,
+    required this.statusLabel,
+  });
+
+  static String calculateGrade(num obtained, num max) {
+    if (max <= 0) return '-';
+    final pct = (obtained / max) * 100;
+    if (pct >= 90) return 'A+';
+    if (pct >= 80) return 'A';
+    if (pct >= 70) return 'B';
+    if (pct >= 60) return 'C';
+    if (pct >= 50) return 'D';
+    if (pct >= 40) return 'E';
+    return 'F';
+  }
+
+  static ConsolidatedExamResult buildFromTerms({
+    required String studentName,
+    required String rollNumber,
+    required String className,
+    String fatherName = '',
+    String session = '2025-2026',
+    String attendance = '',
+    required List<ExamTermItem> terms,
+    StudentExamResult? explicitAnnualResult,
+  }) {
+    // Only terms that have published results
+    final publishedTerms = terms.where((t) => t.isPublished && t.result != null).toList();
+
+    // Collect all unique subjects across published terms
+    final Set<String> allSubjects = {};
+    for (final term in publishedTerms) {
+      if (term.result?.subjectMarks != null) {
+        allSubjects.addAll(term.result!.subjectMarks.keys);
+      }
+    }
+    if (explicitAnnualResult?.subjectMarks != null) {
+      allSubjects.addAll(explicitAnnualResult!.subjectMarks.keys);
+    }
+
+    final Map<String, ConsolidatedSubjectInfo> subjectsMap = {};
+    num cumulativeObt = 0;
+    num cumulativeMax = 0;
+
+    for (final subj in allSubjects) {
+      final Map<String, SubjectTermScore> termScores = {};
+      num subjObtSum = 0;
+      num subjMaxSum = 0;
+
+      for (final term in terms) {
+        final subjInfo = term.result?.subjectMarks[subj];
+        if (subjInfo != null) {
+          termScores[term.id] = SubjectTermScore(
+            obtained: subjInfo.obtained,
+            totalMarks: subjInfo.totalMarks,
+            passingMarks: subjInfo.passingMarks,
+            grade: subjInfo.grade,
+            remarks: subjInfo.remarks,
+            isAbsent: subjInfo.isAbsent,
+          );
+          if (!subjInfo.isAbsent && subjInfo.obtained != null) {
+            subjObtSum += subjInfo.obtained!;
+          }
+          subjMaxSum += subjInfo.totalMarks;
+        }
+      }
+
+      final subjPct = subjMaxSum > 0 ? ((subjObtSum / subjMaxSum) * 100) : 0;
+      final subjGrade = calculateGrade(subjObtSum, subjMaxSum);
+
+      subjectsMap[subj] = ConsolidatedSubjectInfo(
+        subjectName: subj,
+        terms: termScores,
+        totalObtained: subjObtSum,
+        totalMax: subjMaxSum,
+        percentage: num.parse(subjPct.toStringAsFixed(1)),
+        grade: subjGrade,
+      );
+
+      cumulativeObt += subjObtSum;
+      cumulativeMax += subjMaxSum;
+    }
+
+    // Check if explicit annual aggregate result is available
+    if (explicitAnnualResult != null) {
+      return ConsolidatedExamResult(
+        session: session,
+        studentName: studentName.isNotEmpty ? studentName : explicitAnnualResult.studentName,
+        rollNumber: rollNumber.isNotEmpty ? rollNumber : explicitAnnualResult.rollNumber,
+        className: className.isNotEmpty ? className : explicitAnnualResult.className,
+        fatherName: fatherName.isNotEmpty ? fatherName : explicitAnnualResult.fatherName,
+        activeTerms: terms,
+        subjects: subjectsMap,
+        grandTotalObtained: explicitAnnualResult.totalObtained > 0 ? explicitAnnualResult.totalObtained : cumulativeObt,
+        grandTotalMax: explicitAnnualResult.totalMax > 0 ? explicitAnnualResult.totalMax : cumulativeMax,
+        overallPercentage: explicitAnnualResult.percentage > 0 ? explicitAnnualResult.percentage : (cumulativeMax > 0 ? num.parse(((cumulativeObt / cumulativeMax) * 100).toStringAsFixed(1)) : 0),
+        overallGrade: explicitAnnualResult.grade.isNotEmpty && explicitAnnualResult.grade != '-' ? explicitAnnualResult.grade : calculateGrade(cumulativeObt, cumulativeMax),
+        position: explicitAnnualResult.position,
+        attendance: explicitAnnualResult.attendance.isNotEmpty ? explicitAnnualResult.attendance : attendance,
+        isPassed: explicitAnnualResult.isPassed,
+        statusLabel: explicitAnnualResult.statusLabel,
+      );
+    }
+
+    final overallPct = cumulativeMax > 0 ? num.parse(((cumulativeObt / cumulativeMax) * 100).toStringAsFixed(1)) : 0;
+    final overallGrd = calculateGrade(cumulativeObt, cumulativeMax);
+    final isPassed = overallPct >= 33;
+
+    return ConsolidatedExamResult(
+      session: session,
+      studentName: studentName,
+      rollNumber: rollNumber,
+      className: className,
+      fatherName: fatherName,
+      activeTerms: terms,
+      subjects: subjectsMap,
+      grandTotalObtained: cumulativeObt,
+      grandTotalMax: cumulativeMax,
+      overallPercentage: overallPct,
+      overallGrade: overallGrd,
+      position: publishedTerms.isNotEmpty ? (publishedTerms.last.result?.position ?? '-') : '-',
+      attendance: attendance.isNotEmpty ? attendance : (publishedTerms.isNotEmpty ? (publishedTerms.last.result?.attendance ?? '') : ''),
+      isPassed: isPassed,
+      statusLabel: isPassed ? 'PASSED' : 'NEEDS IMPROVEMENT',
+    );
+  }
 }
 
 // Fallback standard presets if no exams are configured in school DB
 final List<Map<String, String>> defaultExamPresets = [
+  {
+    'id': 'monthly_test_2026',
+    'title': 'Monthly Class Test 2026',
+    'session': '2025-2026',
+    'description': 'Monthly class evaluation and assessment tests.',
+  },
   {
     'id': 'first_term_2026',
     'title': 'First Term Examination 2026',

@@ -40,6 +40,8 @@ class AuthService {
         return 'The email address is badly formatted.';
       case 'user-disabled':
         return 'This user account has been disabled.';
+      case 'invalid-credential':
+        return 'Incorrect email or password, or account does not exist.';
       case 'network-request-failed':
         return 'NO_INTERNET_CONNECTION'; // Clean key string to catch in UI
       default:

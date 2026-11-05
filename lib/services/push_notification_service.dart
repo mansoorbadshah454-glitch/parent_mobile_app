@@ -17,7 +17,6 @@ class PushNotificationService {
 
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   ProviderContainer? _container;
-  bool _initialized = false;
 
   void setContainer(ProviderContainer container) {
     _container = container;
@@ -151,9 +150,73 @@ class PushNotificationService {
     }
   }
 
+  bool _listenersRegistered = false;
+  String? _currentSchoolId;
+  String? _currentUid;
+
+  Future<void> clearAllScheduledReminders() async {
+    try {
+      await _localNotificationsPlugin.cancelAll();
+      print("Cleared all local scheduled notifications");
+    } catch (e) {
+      print("Error clearing local scheduled notifications: $e");
+    }
+  }
+
+  Future<void> cleanSession(String? schoolId, String? uid) async {
+    try {
+      // 1. Wipe all local OS scheduled alarms/notifications immediately
+      await clearAllScheduledReminders();
+
+      // 2. Unsubscribe from FCM topics for this school
+      if (schoolId != null && schoolId.isNotEmpty) {
+        try {
+          await _fcm.unsubscribeFromTopic('${schoolId}_parents');
+          await _fcm.unsubscribeFromTopic('${schoolId}_all');
+          print('Unsubscribed from FCM topics for school: $schoolId');
+        } catch (e) {
+          print('Error unsubscribing from topics: $e');
+        }
+      }
+
+      // 3. Unlink FCM token from this parent's Firestore record
+      if (schoolId != null && schoolId.isNotEmpty && uid != null && uid.isNotEmpty) {
+        try {
+          final token = await _fcm.getToken();
+          if (token != null) {
+            await FirebaseFirestore.instance
+                .collection('schools')
+                .doc(schoolId)
+                .collection('parents')
+                .doc(uid)
+                .set({
+                  'fcmToken': FieldValue.arrayRemove([token]),
+                }, SetOptions(merge: true));
+            print('FCM Token removed from parent record in Firestore');
+          }
+        } catch (e) {
+          print('Error removing FCM token from Firestore: $e');
+        }
+      }
+
+      _currentSchoolId = null;
+      _currentUid = null;
+    } catch (e) {
+      print('Error during cleanSession: $e');
+    }
+  }
+
   Future<void> init(String schoolId, String uid) async {
-    if (_initialized) return;
-    _initialized = true;
+    // If already initialized for this exact school and user, no need to re-run
+    if (_currentSchoolId == schoolId && _currentUid == uid) return;
+
+    // If switching school or user without a clean logout, clean previous session first
+    if (_currentSchoolId != null && (_currentSchoolId != schoolId || _currentUid != uid)) {
+      await cleanSession(_currentSchoolId, _currentUid);
+    }
+
+    _currentSchoolId = schoolId;
+    _currentUid = uid;
 
     // Request permission
     NotificationSettings settings = await _fcm.requestPermission(
@@ -164,7 +227,7 @@ class PushNotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       print('Parent User granted permission for FCM');
-      // Get the token
+      // Get the token and bind to current school/uid
       try {
         String? token = await _fcm.getToken();
         if (token != null) {
@@ -174,58 +237,65 @@ class PushNotificationService {
         print("Error getting FCM token: $e");
       }
 
-      // Refresh listener
-      _fcm.onTokenRefresh.listen((newToken) {
-         saveTokenToDatabase(newToken, schoolId, uid);
-      });
+      // Register listeners only once to avoid duplicate listeners on account switch
+      if (!_listenersRegistered) {
+        _listenersRegistered = true;
 
-      // Foreground message handler
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-        try {
-          print('Got a push notification whilst in the foreground!');
-
-          final title = (message.notification?.title ?? message.data['title'] ?? 'Notification').toString();
-          final body = (message.notification?.body ?? message.data['body'] ?? '').toString();
-          final type = (message.data['type'] ?? '').toString();
-          final kidId = message.data['kidId']?.toString() ?? message.data['studentId']?.toString();
-            
-          if (title == 'Notification' && body.isEmpty && type.isEmpty) return; // Prevent empty pings
-
-          final resolvedType = (type == 'alert' && message.data['alertType'] != null && message.data['alertType'].toString().isNotEmpty) 
-              ? message.data['alertType'].toString()
-              : type;
-
-          String routingPayload = (resolvedType == 'result' && kidId != null) ? '$resolvedType:$kidId' : resolvedType;
-            
-          final shouldShow = await NotificationSettingsHelper.shouldShowNotification(resolvedType);
-          if (!shouldShow) return;
-
-          bool isEmergency = type == 'alert' && title.contains('Urgent');
-
-          showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
-        } catch (e) {
-          print('Error handling foreground message: $e');
-        }
-      });
-      
-      // Background message tap handler
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        try {
-           final type = message.data['type']?.toString();
-           final kidId = message.data['kidId']?.toString() ?? message.data['studentId']?.toString();
-           final alertType = message.data['alertType'];
-           
-           final resType = (type == 'alert' && alertType != null) ? alertType.toString() : type;
-           
-           if (resType == 'result' && kidId != null) {
-              routeFromType('$resType:$kidId');
-           } else {
-              routeFromType(resType);
+        // Refresh listener
+        _fcm.onTokenRefresh.listen((newToken) {
+           if (_currentSchoolId != null && _currentUid != null) {
+             saveTokenToDatabase(newToken, _currentSchoolId!, _currentUid!);
            }
-        } catch (e) {
-          print('Error handling message tap: $e');
-        }
-      });
+        });
+
+        // Foreground message handler
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+          try {
+            print('Got a push notification whilst in the foreground!');
+
+            final title = (message.notification?.title ?? message.data['title'] ?? 'Notification').toString();
+            final body = (message.notification?.body ?? message.data['body'] ?? '').toString();
+            final type = (message.data['type'] ?? '').toString();
+            final kidId = message.data['kidId']?.toString() ?? message.data['studentId']?.toString();
+              
+            if (title == 'Notification' && body.isEmpty && type.isEmpty) return; // Prevent empty pings
+
+            final resolvedType = (type == 'alert' && message.data['alertType'] != null && message.data['alertType'].toString().isNotEmpty) 
+                ? message.data['alertType'].toString()
+                : type;
+
+            String routingPayload = (resolvedType == 'result' && kidId != null) ? '$resolvedType:$kidId' : resolvedType;
+              
+            final shouldShow = await NotificationSettingsHelper.shouldShowNotification(resolvedType);
+            if (!shouldShow) return;
+
+            bool isEmergency = type == 'alert' && title.contains('Urgent');
+
+            showGlobalAlert(title, body, type, isEmergency: isEmergency, payload: routingPayload);
+          } catch (e) {
+            print('Error handling foreground message: $e');
+          }
+        });
+        
+        // Background message tap handler
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          try {
+            final type = message.data['type']?.toString();
+            final kidId = message.data['kidId']?.toString() ?? message.data['studentId']?.toString();
+            final alertType = message.data['alertType'];
+            
+            final resType = (type == 'alert' && alertType != null) ? alertType.toString() : type;
+            
+            if (resType == 'result' && kidId != null) {
+               routeFromType('$resType:$kidId');
+            } else {
+               routeFromType(resType);
+            }
+          } catch (e) {
+            print('Error handling message tap: $e');
+          }
+        });
+      }
       
     } else {
       print('Parent User declined or has not accepted permission');
@@ -234,6 +304,9 @@ class PushNotificationService {
 
   Future<void> saveTokenToDatabase(String token, String schoolId, String uid) async {
     try {
+      _currentSchoolId = schoolId;
+      _currentUid = uid;
+
       // FCM Topic Subscription for scalable broadcasts
       await FirebaseMessaging.instance.subscribeToTopic('${schoolId}_parents');
       await FirebaseMessaging.instance.subscribeToTopic('${schoolId}_all');

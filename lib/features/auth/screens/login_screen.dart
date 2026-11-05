@@ -116,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       ref.read(authControllerProvider.notifier).login(
         rawSchoolId,
-        _emailController.text.trim(),
+        _emailController.text.trim().toLowerCase(),
         _passwordController.text.trim(),
       );
     }

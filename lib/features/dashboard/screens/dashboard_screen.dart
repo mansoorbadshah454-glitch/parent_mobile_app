@@ -50,6 +50,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Push the local notification initializer early so we can schedule
     await PushNotificationService().initLocalNotifications();
 
+    // Clean any old lingering scheduled reminders before scheduling fresh ones for currently active kids
+    await PushNotificationService().clearAllScheduledReminders();
+
     if (hasUnpaid) {
       final prefs = await SharedPreferences.getInstance();
       final dateKey = '${today.year}-${today.month}-${today.day}';
@@ -80,9 +83,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // only increment count if we actually showed it to unpaid folks
       if (currentCount < 2) prefs.setInt('fee_reminder_count', currentCount + 1);
     } else {
-      for (final kid in kids) {
-        PushNotificationService().cancelFeeReminders(kid);
-      }
+      await PushNotificationService().clearAllScheduledReminders();
     }
   }
 
