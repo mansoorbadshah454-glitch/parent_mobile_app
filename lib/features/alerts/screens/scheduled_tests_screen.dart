@@ -52,6 +52,44 @@ final scheduledTestsProvider = StreamProvider.autoDispose.family<List<Map<String
   }
 });
 
+final classSubjectsProvider = StreamProvider.autoDispose.family<List<String>, String>((ref, classId) async* {
+  final parentDataAsync = ref.watch(parentDataProvider);
+  if (parentDataAsync.value == null) {
+    yield [];
+    return;
+  }
+  
+  final schoolId = parentDataAsync.value!.schoolId;
+  if (schoolId.isEmpty || classId.isEmpty) {
+    yield [];
+    return;
+  }
+  
+  final stream = FirebaseFirestore.instance
+      .collection('schools')
+      .doc(schoolId)
+      .collection('classes')
+      .doc(classId)
+      .snapshots();
+      
+  await for (final snap in stream) {
+    if (!snap.exists) {
+      yield [];
+      continue;
+    }
+    final data = snap.data();
+    final rawSubjects = data?['subjects'];
+    List<String> list = [];
+    if (rawSubjects is List) {
+      list = rawSubjects
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    yield list;
+  }
+});
+
 class TestReportArgs {
   final String classId;
   final String studentId;
