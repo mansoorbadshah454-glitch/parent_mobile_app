@@ -33,6 +33,7 @@ class KidData {
   final dynamic feeDiscount;
   final dynamic transportFee;
   final dynamic tuitionFee;
+  final List<Map<String, dynamic>> homeworkScores;
 
   KidData({
     required this.id,
@@ -65,6 +66,7 @@ class KidData {
     this.feeDiscount,
     this.transportFee,
     this.tuitionFee,
+    this.homeworkScores = const [],
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -124,6 +126,13 @@ class KidData {
       int parsedPrevUnpaid = int.tryParse(map['previousMonthsUnpaidCount']?.toString() ?? '') ??
           int.tryParse(map['unpaidMonthsCount']?.toString() ?? '') ?? 0;
 
+      List<Map<String, dynamic>> parsedHomeworkScores = [];
+      if (map['homeworkScores'] is List) {
+        for (var item in map['homeworkScores']) {
+          if (item is Map) parsedHomeworkScores.add(Map<String, dynamic>.from(item));
+        }
+      }
+
       final bool isScholarshipVal = map['isScholarship'] == true ||
           map['isFreeShip'] == true ||
           (map['concessionType']?.toString().toLowerCase() == 'free');
@@ -163,6 +172,7 @@ class KidData {
       feeDiscount: map['feeDiscount'] ?? map['discount'],
       transportFee: map['transportFee'] ?? map['monthlyTransportFee'],
       tuitionFee: map['tuitionFee'] ?? map['monthlyFee'] ?? map['fee'],
+      homeworkScores: parsedHomeworkScores,
     );
   }
 

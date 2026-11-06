@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/kids_provider.dart';
 import '../providers/academic_performance_provider.dart';
+import '../providers/homework_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/utils/translation_helper.dart';
@@ -95,65 +96,203 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
     }
   }
 
-  ({String msg, Color color, IconData icon, String title}) _getHomeworkBadgeData(Map<String, double> scores, double average) {
+  ({
+    double average,
+    int doneCount,
+    int incompleteCount,
+    int notDoneCount,
+    int totalGraded,
+    Map<String, double> subjectScores,
+    bool hasGradedData,
+  }) _calculateWeeklyHomeworkPerformance(List<HomeworkItem> homeworkList, KidData kid) {
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+    final sevenDaysAgo = todayMidnight.subtract(const Duration(days: 7));
+
+    int doneCount = 0;
+    int incompleteCount = 0;
+    int notDoneCount = 0;
+    int totalGraded = 0;
+    double totalScoreSum = 0;
+    final Map<String, List<double>> subjScoreList = {};
+
+    for (final hw in homeworkList) {
+      // 1. Filter within last 7 days window
+      DateTime? hwDate = hw.createdAt;
+      if (hwDate == null && hw.assignedDate.isNotEmpty) {
+        try {
+          hwDate = DateTime.parse(hw.assignedDate);
+        } catch (_) {}
+      }
+      if (hwDate != null) {
+        final hwDay = DateTime(hwDate.year, hwDate.month, hwDate.day);
+        if (hwDay.isBefore(sevenDaysAgo)) {
+          continue; // Older than 7 days
+        }
+      }
+
+      // 2. Check student's submission status in this homework
+      double? score;
+      String status = '';
+
+      if (hw.submissions.containsKey(kid.id)) {
+        final sub = hw.submissions[kid.id];
+        if (sub is Map) {
+          final statusStr = sub['status']?.toString().toLowerCase().trim() ?? '';
+          final rawScore = sub['score'];
+          final num? scoreNum = rawScore is num ? rawScore : num.tryParse(rawScore?.toString() ?? '');
+
+          if (statusStr == 'done' || (scoreNum != null && scoreNum >= 75)) {
+            score = 100.0;
+            status = 'done';
+          } else if (statusStr == 'incomplete' || (scoreNum != null && scoreNum >= 25 && scoreNum < 75)) {
+            score = 50.0;
+            status = 'incomplete';
+          } else if (statusStr == 'not_done' || statusStr == 'notdone' || (scoreNum != null && scoreNum < 25)) {
+            score = 0.0;
+            status = 'not_done';
+          }
+        } else if (sub is String) {
+          final s = sub.toLowerCase().trim();
+          if (s == 'done') {
+            score = 100.0;
+            status = 'done';
+          } else if (s == 'incomplete') {
+            score = 50.0;
+            status = 'incomplete';
+          } else if (s == 'not_done' || s == 'notdone') {
+            score = 0.0;
+            status = 'not_done';
+          }
+        }
+      }
+
+      // Fallback: check kid.homeworkScores if not in submissions
+      if (score == null && kid.homeworkScores.isNotEmpty) {
+        final hwDateStr = hw.assignedDate.length >= 10 ? hw.assignedDate.substring(0, 10) : hw.assignedDate;
+        final match = kid.homeworkScores.firstWhere(
+          (h) =>
+              (h['homeworkId'] != null && h['homeworkId'].toString() == hw.id) ||
+              (h['subject'] != null &&
+                  h['subject'].toString().toLowerCase() == hw.subject.toLowerCase() &&
+                  h['date']?.toString() == hwDateStr),
+          orElse: () => <String, dynamic>{},
+        );
+        if (match.isNotEmpty) {
+          final statusStr = match['status']?.toString().toLowerCase().trim() ?? '';
+          final rawScore = match['score'];
+          final num? scoreNum = rawScore is num ? rawScore : num.tryParse(rawScore?.toString() ?? '');
+          if (statusStr == 'done' || (scoreNum != null && scoreNum >= 75)) {
+            score = 100.0;
+            status = 'done';
+          } else if (statusStr == 'incomplete' || (scoreNum != null && scoreNum >= 25 && scoreNum < 75)) {
+            score = 50.0;
+            status = 'incomplete';
+          } else if (statusStr == 'not_done' || statusStr == 'notdone' || (scoreNum != null && scoreNum < 25)) {
+            score = 0.0;
+            status = 'not_done';
+          }
+        }
+      }
+
+      // Accumulate if graded
+      if (score != null) {
+        if (status == 'done') doneCount++;
+        if (status == 'incomplete') incompleteCount++;
+        if (status == 'not_done') notDoneCount++;
+
+        totalScoreSum += score;
+        totalGraded++;
+
+        final subj = hw.subject.trim().isNotEmpty ? hw.subject.trim() : 'General';
+        subjScoreList.putIfAbsent(subj, () => []).add(score);
+      }
+    }
+
+    final Map<String, double> subjectAverages = {};
+    for (final entry in subjScoreList.entries) {
+      final avg = entry.value.reduce((a, b) => a + b) / entry.value.length;
+      subjectAverages[entry.key] = avg;
+    }
+
+    if (totalGraded == 0) {
+      return (
+        average: 0.0,
+        doneCount: 0,
+        incompleteCount: 0,
+        notDoneCount: 0,
+        totalGraded: 0,
+        subjectScores: {},
+        hasGradedData: false,
+      );
+    }
+
+    final double average = totalScoreSum / totalGraded;
+    return (
+      average: average,
+      doneCount: doneCount,
+      incompleteCount: incompleteCount,
+      notDoneCount: notDoneCount,
+      totalGraded: totalGraded,
+      subjectScores: subjectAverages,
+      hasGradedData: true,
+    );
+  }
+
+  ({String msg, Color color, IconData icon, String title}) _getHomeworkBadgeData({
+    required Map<String, double> scores,
+    required double average,
+    required bool hasGradedData,
+    required int totalGraded,
+    required int doneCount,
+    required int notDoneCount,
+  }) {
+    if (!hasGradedData) {
+      return (
+        msg: "No graded homework in the last 7 days. Completion rate will update live as teachers evaluate daily assignments.",
+        color: Colors.blueGrey,
+        icon: Icons.info_outline_rounded,
+        title: "Awaiting Evaluation",
+      );
+    }
+
     String highestSubj = scores.keys.isNotEmpty ? scores.entries.reduce((a, b) => a.value > b.value ? a : b).key : 'All Subjects';
     String lowestSubj = scores.keys.isNotEmpty ? scores.entries.reduce((a, b) => a.value < b.value ? a : b).key : 'All Subjects';
 
     if (average >= 90) {
       return (
-        msg: "Exceptional consistency! 📝 All assignments are submitted on time, showing great responsibility, especially in $highestSubj.",
+        msg: "Exceptional weekly consistency! 📝 $doneCount of $totalGraded assignments completely Done ($highestSubj leading).",
         color: Colors.green.shade600,
         icon: Icons.assignment_turned_in_rounded,
         title: "Distinction",
       );
     } else if (average >= 80) {
       return (
-        msg: "Excellent completion rate! 🎒 Highly consistent with daily tasks, demonstrating a strong work ethic.",
+        msg: "Excellent weekly progress! 🎒 Consistent completion across assignments ($doneCount Done), showing strong academic responsibility.",
         color: Colors.teal.shade500,
         icon: Icons.assignment_rounded,
         title: "Excellent",
       );
     } else if (average >= 70) {
       return (
-        msg: "Very good consistency. 📓 Most homework is completed effectively. Please ensure $lowestSubj assignments are not overlooked.",
+        msg: "Very good consistency. 📓 Most homework submitted on time ($doneCount Done). Focus on completing pending tasks in $lowestSubj.",
         color: ThemeColors.primaryPurple,
         icon: Icons.menu_book_rounded,
         title: "Very Good",
       );
-    } else if (average >= 60) {
-      return (
-        msg: "Good adherence. ⏱️ Homework is generally submitted. Monitoring $lowestSubj tasks will help maintain regularity.",
-        color: Colors.blue.shade500,
-        icon: Icons.task_alt_rounded,
-        title: "Good",
-      );
     } else if (average >= 50) {
       return (
-        msg: "Satisfactory completion. 📋 Assignments are partially met. Regular checks on $lowestSubj homework are recommended.",
+        msg: "Satisfactory completion. 📋 Assignments partially met. Regular checks on $lowestSubj homework are recommended.",
         color: Colors.orange.shade500,
         icon: Icons.pending_actions_rounded,
         title: "Satisfactory",
       );
-    } else if (average >= 40) {
-      return (
-        msg: "Needs attention. ⚠️ Multiple missing assignments noted. Increased parental supervision is advised, particularly for $lowestSubj.",
-        color: Colors.deepOrange.shade600,
-        icon: Icons.assignment_late_rounded,
-        title: "Needs Attention",
-      );
-    } else if (average >= 30) {
-      return (
-        msg: "Poor homework record. 📉 Consistency is severely lacking. Immediate focus is required to address missing tasks in $lowestSubj.",
-        color: Colors.red.shade500,
-        icon: Icons.assignment_returned_rounded,
-        title: "Poor Consistency",
-      );
     } else {
       return (
-        msg: "Action required. 🚨 Chronic failure to submit homework. Urgent parental intervention is necessary.",
-        color: Colors.red.shade900,
-        icon: Icons.warning_amber_rounded,
-        title: "Action Required",
+        msg: "Needs attention. ⚠️ Incomplete or missing assignments noted ($notDoneCount Not Done). Please review $lowestSubj homework with the child.",
+        color: Colors.red.shade700,
+        icon: Icons.assignment_late_rounded,
+        title: "Needs Attention",
       );
     }
   }
@@ -162,6 +301,10 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
   Widget build(BuildContext context) {
     final performanceAsync = ref.watch(academicPerformanceProvider((
       id: widget.kid.id,
+      classId: widget.kid.classId,
+      className: widget.kid.className,
+    )));
+    final homeworkAsync = ref.watch(classHomeworkProvider((
       classId: widget.kid.classId,
       className: widget.kid.className,
     )));
@@ -176,11 +319,23 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
           }
 
           final subjectScores = data.academicScores;
-          final homeworkScore = data.homeworkAverage;
+          final homeworkList = homeworkAsync.value ?? [];
+          final weeklyHw = _calculateWeeklyHomeworkPerformance(homeworkList, widget.kid);
+
+          final double homeworkScore = weeklyHw.hasGradedData
+              ? weeklyHw.average
+              : data.homeworkAverage;
 
           final double averageAcademic = subjectScores.values.reduce((a, b) => a + b) / subjectScores.length;
           final academicBadgeData = _getAcademicBadgeData(subjectScores, averageAcademic);
-          final homeworkBadgeData = _getHomeworkBadgeData(data.homeworkScores, homeworkScore);
+          final homeworkBadgeData = _getHomeworkBadgeData(
+            scores: weeklyHw.hasGradedData ? weeklyHw.subjectScores : data.homeworkScores,
+            average: homeworkScore,
+            hasGradedData: weeklyHw.hasGradedData,
+            totalGraded: weeklyHw.totalGraded,
+            doneCount: weeklyHw.doneCount,
+            notDoneCount: weeklyHw.notDoneCount,
+          );
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -196,7 +351,14 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
                 const SizedBox(height: 32),
                 _buildSectionTitle(TranslationHelper.translate("Homework Completion", lang), lang),
                 const SizedBox(height: 16),
-                _buildHomeworkChart(homeworkScore),
+                _buildHomeworkChart(
+                  homeworkScore: homeworkScore,
+                  hasGradedData: weeklyHw.hasGradedData,
+                  doneCount: weeklyHw.doneCount,
+                  incompleteCount: weeklyHw.incompleteCount,
+                  notDoneCount: weeklyHw.notDoneCount,
+                  totalGraded: weeklyHw.totalGraded,
+                ),
                 const SizedBox(height: 16),
                 _buildInfoBadge(homeworkBadgeData, lang),
                 
@@ -339,7 +501,14 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
     );
   }
 
-  Widget _buildHomeworkChart(double homeworkScore) {
+  Widget _buildHomeworkChart({
+    required double homeworkScore,
+    required bool hasGradedData,
+    required int doneCount,
+    required int incompleteCount,
+    required int notDoneCount,
+    required int totalGraded,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
@@ -359,7 +528,7 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
             height: 90,
             width: 90,
             child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: _startAnimation ? homeworkScore / 100 : 0),
+              tween: Tween<double>(begin: 0, end: _startAnimation ? (hasGradedData ? homeworkScore / 100 : 0) : 0),
               duration: const Duration(milliseconds: 1200),
               curve: Curves.easeOutCubic,
               builder: (context, value, child) {
@@ -367,21 +536,23 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
                   fit: StackFit.expand,
                   children: [
                     CircularProgressIndicator(
-                      value: value,
+                      value: hasGradedData ? value : 0.0,
                       strokeWidth: 8,
                       backgroundColor: Colors.grey.shade200,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        value >= 0.8 ? Colors.green : (value >= 0.5 ? Colors.orange : Colors.red),
+                        hasGradedData
+                            ? (value >= 0.8 ? Colors.green : (value >= 0.5 ? Colors.orange : Colors.red))
+                            : Colors.grey.shade400,
                       ),
                       strokeCap: StrokeCap.round,
                     ),
                     Center(
                       child: Text(
-                        '${(value * 100).toInt()}%',
-                        style: const TextStyle(
-                          fontSize: 20,
+                        hasGradedData ? '${(value * 100).toInt()}%' : '--',
+                        style: TextStyle(
+                          fontSize: hasGradedData ? 20 : 16,
                           fontWeight: FontWeight.bold,
-                          color: ThemeColors.primaryText,
+                          color: hasGradedData ? ThemeColors.primaryText : Colors.grey.shade500,
                         ),
                       ),
                     ),
@@ -396,7 +567,7 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Recent Homework",
+                  "Weekly Homework",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -405,10 +576,13 @@ class _AcademicTabContentState extends ConsumerState<AcademicTabContent> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Most assigned tasks completed nicely. Make sure to review the pending ones.",
+                  hasGradedData
+                      ? "Last 7 Days: $doneCount Done • $incompleteCount Incomplete • $notDoneCount Not Done"
+                      : "No homework graded by teachers in the last 7 days yet.",
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: hasGradedData ? const Color(0xFF374151) : Colors.grey.shade600,
+                    fontWeight: hasGradedData ? FontWeight.w600 : FontWeight.normal,
                     height: 1.4,
                   ),
                 ),

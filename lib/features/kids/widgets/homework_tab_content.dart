@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/kids_provider.dart';
 import '../providers/homework_provider.dart';
@@ -91,6 +92,149 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
     return (label: "Assigned", color: ThemeColors.primaryPurple, bg: const Color(0xFFF5F3FF));
   }
 
+  ({
+    String label,
+    Color color,
+    Color bg,
+    IconData icon,
+    String? remark,
+    bool isTeacherVerified,
+  }) _getStudentHomeworkStatus(HomeworkItem item, KidData kid) {
+    // 1. Check direct submission in homework document
+    if (item.submissions.containsKey(kid.id)) {
+      final sub = item.submissions[kid.id];
+      if (sub is Map) {
+        final statusStr = sub['status']?.toString().toLowerCase().trim() ?? '';
+        final score = sub['score'];
+        final num? scoreNum = score is num ? score : num.tryParse(score?.toString() ?? '');
+
+        if (statusStr == 'done' || (scoreNum != null && scoreNum >= 75)) {
+          return (
+            label: "Done (100%)",
+            color: const Color(0xFF059669),
+            bg: const Color(0xFFECFDF5),
+            icon: Icons.check_circle_rounded,
+            remark: "Teacher Checked: Completed & Verified",
+            isTeacherVerified: true,
+          );
+        } else if (statusStr == 'incomplete' || (scoreNum != null && scoreNum >= 25 && scoreNum < 75)) {
+          return (
+            label: "Incomplete (50%)",
+            color: const Color(0xFFD97706),
+            bg: const Color(0xFFFFFBEB),
+            icon: Icons.timelapse_rounded,
+            remark: "Teacher Marked: Homework is Incomplete",
+            isTeacherVerified: true,
+          );
+        } else if (statusStr == 'not_done' || statusStr == 'notdone' || (scoreNum != null && scoreNum < 25)) {
+          return (
+            label: "Not Done (0%)",
+            color: const Color(0xFFDC2626),
+            bg: const Color(0xFFFEF2F2),
+            icon: Icons.cancel_rounded,
+            remark: "Teacher Marked: Homework was Not Done",
+            isTeacherVerified: true,
+          );
+        }
+      } else if (sub is String) {
+        final s = sub.toLowerCase().trim();
+        if (s == 'done') {
+          return (
+            label: "Done (100%)",
+            color: const Color(0xFF059669),
+            bg: const Color(0xFFECFDF5),
+            icon: Icons.check_circle_rounded,
+            remark: "Teacher Checked: Completed & Verified",
+            isTeacherVerified: true,
+          );
+        } else if (s == 'incomplete') {
+          return (
+            label: "Incomplete (50%)",
+            color: const Color(0xFFD97706),
+            bg: const Color(0xFFFFFBEB),
+            icon: Icons.timelapse_rounded,
+            remark: "Teacher Marked: Homework is Incomplete",
+            isTeacherVerified: true,
+          );
+        } else if (s == 'not_done' || s == 'notdone') {
+          return (
+            label: "Not Done (0%)",
+            color: const Color(0xFFDC2626),
+            bg: const Color(0xFFFEF2F2),
+            icon: Icons.cancel_rounded,
+            remark: "Teacher Marked: Homework was Not Done",
+            isTeacherVerified: true,
+          );
+        }
+      }
+    }
+
+    // 2. Check student's homeworkScores array (fallback)
+    if (kid.homeworkScores.isNotEmpty) {
+      Map<String, dynamic>? match = kid.homeworkScores.firstWhere(
+        (h) => h['homeworkId'] != null && h['homeworkId'].toString() == item.id,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (match.isEmpty && item.assignedDate.isNotEmpty) {
+        final hwDate = item.assignedDate.length >= 10 ? item.assignedDate.substring(0, 10) : item.assignedDate;
+        match = kid.homeworkScores.firstWhere(
+          (h) =>
+              h['subject'] != null &&
+              h['subject'].toString().toLowerCase() == item.subject.toLowerCase() &&
+              (h['date']?.toString() == hwDate),
+          orElse: () => <String, dynamic>{},
+        );
+      }
+
+      if (match.isNotEmpty) {
+        final statusStr = match['status']?.toString().toLowerCase().trim() ?? '';
+        final score = match['score'];
+        final num? scoreNum = score is num ? score : num.tryParse(score?.toString() ?? '');
+
+        if (statusStr == 'done' || (scoreNum != null && scoreNum >= 75)) {
+          return (
+            label: "Done (100%)",
+            color: const Color(0xFF059669),
+            bg: const Color(0xFFECFDF5),
+            icon: Icons.check_circle_rounded,
+            remark: "Teacher Checked: Completed & Verified",
+            isTeacherVerified: true,
+          );
+        } else if (statusStr == 'incomplete' || (scoreNum != null && scoreNum >= 25 && scoreNum < 75)) {
+          return (
+            label: "Incomplete (50%)",
+            color: const Color(0xFFD97706),
+            bg: const Color(0xFFFFFBEB),
+            icon: Icons.timelapse_rounded,
+            remark: "Teacher Marked: Homework is Incomplete",
+            isTeacherVerified: true,
+          );
+        } else if (statusStr == 'not_done' || statusStr == 'notdone' || (scoreNum != null && scoreNum < 25)) {
+          return (
+            label: "Not Done (0%)",
+            color: const Color(0xFFDC2626),
+            bg: const Color(0xFFFEF2F2),
+            icon: Icons.cancel_rounded,
+            remark: "Teacher Marked: Homework was Not Done",
+            isTeacherVerified: true,
+          );
+        }
+      }
+    }
+
+    // 3. Fallback to Due Date Status if Teacher hasn't marked yet
+    final due = _getDueStatus(item);
+    return (
+      label: due.label,
+      color: due.color,
+      bg: due.bg,
+      icon: Icons.schedule_rounded,
+      remark: null,
+      isTeacherVerified: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final homeworkAsync = ref.watch(classHomeworkProvider((
@@ -125,20 +269,22 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
         ),
       ),
       data: (homeworkList) {
-        if (homeworkList.isEmpty) {
+        final List<HomeworkItem> activeItems = _getActiveSubjectHomework(homeworkList);
+
+        if (activeItems.isEmpty) {
           return _buildEmptyState(lang);
         }
 
         // Extract subjects for filter
-        final subjects = ['All', ...homeworkList.map((h) => h.subject).toSet().toList()];
+        final subjects = ['All', ...activeItems.map((h) => h.subject).toSet().toList()];
 
-        final filteredList = _selectedSubject == 'All'
-            ? homeworkList
-            : homeworkList.where((h) => h.subject.toLowerCase() == _selectedSubject.toLowerCase()).toList();
+        final filteredItems = _selectedSubject == 'All'
+            ? activeItems
+            : activeItems.where((h) => h.subject.toLowerCase() == _selectedSubject.toLowerCase()).toList();
 
         return Column(
           children: [
-            // Filter Pills
+            // Filter Pills (only if more than 1 subject has active homework)
             if (subjects.length > 2)
               Container(
                 height: 52,
@@ -175,9 +321,9 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
                 ),
               ),
 
-            // Homework Cards List + AI Tips Card at the bottom
+            // 1 Card per Active Subject
             Expanded(
-              child: filteredList.isEmpty
+              child: filteredItems.isEmpty
                   ? Center(
                       child: Text(
                         "No homework found for $_selectedSubject",
@@ -186,15 +332,15 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      itemCount: filteredList.length + 1,
+                      itemCount: filteredItems.length,
                       itemBuilder: (context, index) {
-                        if (index < filteredList.length) {
-                          final item = filteredList[index];
-                          final isExpanded = _expandedIds.contains(item.id);
-                          return _buildExpandableHomeworkCard(item, isExpanded, lang);
-                        } else {
-                          return _buildAiTipsCard(homeworkList, lang);
-                        }
+                        final item = filteredItems[index];
+                        final isExpanded = _expandedIds.contains(item.id);
+                        return _buildExpandableHomeworkCard(
+                          item: item,
+                          isExpanded: isExpanded,
+                          lang: lang,
+                        );
                       },
                     ),
             ),
@@ -204,10 +350,66 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
     );
   }
 
-  Widget _buildExpandableHomeworkCard(HomeworkItem item, bool isExpanded, String lang) {
+  List<HomeworkItem> _getActiveSubjectHomework(List<HomeworkItem> allHomework) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final todayStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+    final yesterday = todayDate.subtract(const Duration(days: 1));
+    final yesterdayStr = "${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}";
+
+    // Group by subject (case-insensitive)
+    final Map<String, List<HomeworkItem>> subjectMap = {};
+    for (final hw in allHomework) {
+      final subj = hw.subject.trim();
+      if (subj.isEmpty) continue;
+      final key = subj.toLowerCase();
+      subjectMap.putIfAbsent(key, () => []).add(hw);
+    }
+
+    final List<HomeworkItem> result = [];
+
+    for (final entry in subjectMap.entries) {
+      final items = entry.value;
+      // Sort newest assignedDate / createdAt descending
+      items.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return b.createdAt!.compareTo(a.createdAt!);
+        }
+        return b.assignedDate.compareTo(a.assignedDate);
+      });
+
+      final latest = items.first;
+
+      // Card appears ONLY IF assigned today OR assigned yesterday OR due today/future!
+      // If older, it DISAPPEARS!
+      bool isActive = false;
+      if (latest.assignedDate == todayStr || latest.assignedDate == yesterdayStr) {
+        isActive = true;
+      } else if (latest.dueDate.isNotEmpty) {
+        try {
+          final due = DateTime.parse(latest.dueDate);
+          if (!due.isBefore(yesterday)) {
+            isActive = true;
+          }
+        } catch (_) {}
+      }
+
+      if (isActive) {
+        result.add(latest);
+      }
+    }
+
+    return result;
+  }
+
+  Widget _buildExpandableHomeworkCard({
+    required HomeworkItem item,
+    required bool isExpanded,
+    required String lang,
+  }) {
     final subjColor = _getSubjectColor(item.subject);
     final subjIcon = _getSubjectIcon(item.subject);
-    final status = _getDueStatus(item);
+    final status = _getStudentHomeworkStatus(item, widget.kid);
 
     final titleText = [
       if (item.chapter.isNotEmpty) item.chapter,
@@ -220,7 +422,11 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isExpanded ? subjColor.withOpacity(0.35) : Colors.grey[200]!,
+          color: isExpanded
+              ? (status.isTeacherVerified ? status.color.withOpacity(0.4) : subjColor.withOpacity(0.35))
+              : (status.isTeacherVerified && status.label.startsWith('Not')
+                  ? status.color.withOpacity(0.35)
+                  : Colors.grey[200]!),
           width: isExpanded ? 1.5 : 1.0,
         ),
         boxShadow: [
@@ -251,58 +457,72 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Header: Subject Badge + Status Pill + Chevron Icon
+                  // Top Header: Subject Badge on Left + Status Pill & Chevron on Right
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Subject Tag
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: subjColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(subjIcon, color: subjColor, size: 14),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  item.subject,
+                                  style: TextStyle(
+                                    color: subjColor,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      // Status Pill (Teacher Verification or Due Status)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: subjColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(10),
+                          color: status.bg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: status.color.withOpacity(0.35)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(subjIcon, color: subjColor, size: 15),
-                            const SizedBox(width: 6),
+                            Icon(status.icon, size: 12, color: status.color),
+                            const SizedBox(width: 4),
                             Text(
-                              item.subject,
+                              status.label,
                               style: TextStyle(
-                                color: subjColor,
-                                fontSize: 12.5,
+                                color: status.color,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
                       ),
+
                       const SizedBox(width: 8),
-
-                      // Status Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: status.bg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: status.color.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          status.label,
-                          style: TextStyle(
-                            color: status.color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                      const Spacer(),
 
                       // Expand / Collapse Chevron Button
                       Container(
-                        width: 28,
-                        height: 28,
+                        width: 26,
+                        height: 26,
                         decoration: BoxDecoration(
                           color: isExpanded ? subjColor.withOpacity(0.1) : Colors.grey[100],
                           shape: BoxShape.circle,
@@ -313,7 +533,7 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
                           curve: Curves.easeInOut,
                           child: Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 20,
+                            size: 18,
                             color: isExpanded ? subjColor : Colors.grey[600],
                           ),
                         ),
@@ -343,42 +563,80 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
                     sizeCurve: Curves.easeInOut,
                     crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
                     
-                    // First Child: Compact Collapsed Row
+                    // First Child: Compact Collapsed Row (Dates only, clean)
                     firstChild: Padding(
                       padding: const EdgeInsets.only(top: 8.0),
-                      child: Row(
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 4,
                         children: [
-                          Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(item.assignedDate),
-                            style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
-                          ),
-                          if (item.dueDate.isNotEmpty) ...[
-                            const Text(" • ", style: TextStyle(color: Colors.grey)),
-                            Icon(Icons.alarm_rounded, size: 12, color: Colors.redAccent.shade400),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                "Due: ${_formatDate(item.dueDate)}",
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.redAccent.shade400,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDate(item.assignedDate),
+                                style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
                               ),
+                            ],
+                          ),
+                          if (item.dueDate.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.alarm_rounded, size: 12, color: Colors.redAccent.shade400),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Due: ${_formatDate(item.dueDate)}",
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.redAccent.shade400,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
                         ],
                       ),
                     ),
 
-                    // Second Child: Expanded Details
+                    // Second Child: Expanded Details (Clean & Minimal)
                     secondChild: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 10),
+
+                        // Teacher Verification Notice if checked
+                        if (status.isTeacherVerified && status.remark != null) ...[
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: status.bg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: status.color.withOpacity(0.35)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(status.icon, size: 18, color: status.color),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    status.remark!,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: status.color,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         // Full Description Box
                         if (item.description.isNotEmpty) ...[
@@ -479,33 +737,6 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
                               ),
                           ],
                         ),
-
-                        // Teacher Name
-                        if (item.teacherName.isNotEmpty && item.teacherName != 'Teacher') ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: ThemeColors.primaryPurple.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.person_outline_rounded, size: 14, color: ThemeColors.primaryPurple),
-                                const SizedBox(width: 6),
-                                Text(
-                                  "Assigned by: ${item.teacherName}",
-                                  style: const TextStyle(
-                                    fontSize: 11.5,
-                                    color: ThemeColors.primaryPurple,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -712,7 +943,7 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32.0),
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -735,7 +966,7 @@ class _HomeworkTabContentState extends ConsumerState<HomeworkTabContent> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "There is no pending homework for this class right now. Check back later for new tasks from teachers.",
+                  "There is no active homework for this class right now. Check back when teachers assign new tasks.",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey.shade600, height: 1.4, fontSize: 13),
                 ),

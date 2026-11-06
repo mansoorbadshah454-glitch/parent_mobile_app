@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/parent_data_provider.dart';
 
@@ -15,6 +15,7 @@ class HomeworkItem {
   final String className;
   final String status;
   final DateTime? createdAt;
+  final Map<String, dynamic> submissions;
 
   HomeworkItem({
     required this.id,
@@ -29,6 +30,7 @@ class HomeworkItem {
     required this.className,
     required this.status,
     this.createdAt,
+    this.submissions = const {},
   });
 
   factory HomeworkItem.fromFirestore(DocumentSnapshot doc) {
@@ -48,6 +50,13 @@ class HomeworkItem {
       created = (data['updatedAt'] as Timestamp).toDate();
     }
 
+    Map<String, dynamic> submissionsMap = <String, dynamic>{};
+    if (data['submissions'] is Map) {
+      try {
+        submissionsMap = Map<String, dynamic>.from(data['submissions'] as Map);
+      } catch (_) {}
+    }
+
     return HomeworkItem(
       id: doc.id,
       subject: data['subject']?.toString() ?? 'General',
@@ -61,6 +70,7 @@ class HomeworkItem {
       className: data['className']?.toString() ?? '',
       status: data['status']?.toString() ?? 'active',
       createdAt: created,
+      submissions: submissionsMap,
     );
   }
 }
