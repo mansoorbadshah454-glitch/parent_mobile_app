@@ -18,7 +18,6 @@ import '../widgets/glowing_school_background.dart';
 import '../../../services/push_notification_service.dart';
 import '../../menu/screens/school_timing_screen.dart';
 import '../../transport/screens/pickup_dropoff_screen.dart';
-import '../../menu/screens/bank_details_screen.dart';
 import '../../menu/screens/help_support_screen.dart';
 import '../../menu/screens/about_screen.dart';
 import '../../menu/screens/settings_screen.dart';
@@ -285,14 +284,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         },
                       ),
                     ListTile(
-                      leading: const Icon(Icons.account_balance, color: ThemeColors.primaryPurple),
-                      title: const Text("Bank Details", style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen()));
-                      },
-                    ),
-                    ListTile(
                       leading: const Icon(Icons.help_center, color: ThemeColors.primaryPurple),
                       title: const Text('Help & Support', style: TextStyle(color: ThemeColors.primaryText, fontWeight: FontWeight.w500)),
                       onTap: () {
@@ -362,7 +353,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'MAI TECH (SMC-PRIVATE) LIMITED',
+                      'MAI TECH (SMC-PVT) LTD',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

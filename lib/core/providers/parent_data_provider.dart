@@ -10,6 +10,10 @@ class ParentData {
   final String name;
   final String email;
   final String? phone;
+  final String? address;
+  final String? occupation;
+  final String? cnic;
+  final String? photoUrl;
   final String? schoolName;
   final String? schoolLogo;
   final bool isTransportEnabled;
@@ -21,6 +25,10 @@ class ParentData {
     required this.name,
     required this.email,
     this.phone,
+    this.address,
+    this.occupation,
+    this.cnic,
+    this.photoUrl,
     this.schoolName,
     this.schoolLogo,
     this.isTransportEnabled = false,
@@ -40,8 +48,12 @@ class ParentData {
       uid: uid,
       schoolId: map['schoolId'] ?? '',
       name: map['name'] ?? 'Parent',
-      email: email,
+      email: (map['email']?.toString().isNotEmpty == true) ? map['email'].toString() : email,
       phone: map['phone']?.toString() ?? map['contact']?.toString() ?? map['phoneNumber']?.toString(),
+      address: map['address']?.toString() ?? map['residentialAddress']?.toString(),
+      occupation: map['occupation']?.toString(),
+      cnic: map['cnic']?.toString(),
+      photoUrl: map['photoUrl']?.toString() ?? map['profileImage']?.toString(),
       schoolName: schoolName,
       schoolLogo: schoolLogo,
       isTransportEnabled: isTransportEnabled,
