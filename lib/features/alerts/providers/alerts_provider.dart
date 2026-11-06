@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/parent_data_provider.dart';
 
@@ -106,7 +107,7 @@ class AlertsActionService {
           .doc(alertId)
           .update({'read': true});
     } catch (e) {
-      print('Error marking alert read: $e');
+      debugPrint('Error marking alert read: $e');
     }
   }
 

@@ -345,7 +345,7 @@ class _SubjectTestReportScreenState extends ConsumerState<SubjectTestReportScree
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: badgeBg,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
