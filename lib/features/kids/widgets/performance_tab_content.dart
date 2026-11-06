@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/kids_provider.dart';
 import '../providers/academic_performance_provider.dart';
 import '../../alerts/screens/scheduled_tests_screen.dart';
@@ -18,75 +19,114 @@ class PerformanceTabContent extends ConsumerStatefulWidget {
 
 class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
 
-  double _calcAcademicScore(AcademicPerformanceData? data) {
-    if (data == null || data.academicScores.isEmpty) return 84.0;
-    final scores = data.academicScores.values.toList();
-    final avg = scores.reduce((a, b) => a + b) / scores.length;
-    return avg.clamp(0.0, 100.0);
+  DateTime? _parseReportDate(Map<String, dynamic> r) {
+    try {
+      final c = r['createdAt'] ?? r['date'] ?? r['timestamp'];
+      if (c is Timestamp) return c.toDate();
+      if (c is String && c.isNotEmpty) return DateTime.tryParse(c);
+    } catch (_) {}
+    return null;
   }
 
-  double _calcHomeworkScore(AcademicPerformanceData? data) {
-    if (data == null) return 82.0;
-    if (data.homeworkAverage > 0) return data.homeworkAverage.clamp(0.0, 100.0);
-    if (data.homeworkScores.isNotEmpty) {
+  ({double score, bool hasData}) _calcAcademicScore(AcademicPerformanceData? data) {
+    if (data == null || data.academicScores.isEmpty) {
+      return (score: 0.0, hasData: false);
+    }
+    final scores = data.academicScores.values.toList();
+    if (scores.isEmpty) return (score: 0.0, hasData: false);
+    final avg = scores.reduce((a, b) => a + b) / scores.length;
+    return (score: avg.clamp(0.0, 100.0), hasData: true);
+  }
+
+  ({double score, bool hasData}) _calcHomeworkScore(AcademicPerformanceData? data, KidData kid) {
+    if (data != null && data.homeworkAverage > 0) {
+      return (score: data.homeworkAverage.clamp(0.0, 100.0), hasData: true);
+    }
+    if (data != null && data.homeworkScores.isNotEmpty) {
       final vals = data.homeworkScores.values.toList();
       final avg = vals.reduce((a, b) => a + b) / vals.length;
-      return avg.clamp(0.0, 100.0);
+      return (score: avg.clamp(0.0, 100.0), hasData: true);
     }
-    return 82.0;
+    if (kid.homeworkScores.isNotEmpty) {
+      double total = 0.0;
+      int count = 0;
+      for (var item in kid.homeworkScores) {
+        final val = double.tryParse(item['score']?.toString() ?? '');
+        if (val != null) {
+          total += val;
+          count++;
+        }
+      }
+      if (count > 0) {
+        return (score: (total / count).clamp(0.0, 100.0), hasData: true);
+      }
+    }
+    return (score: 0.0, hasData: false);
   }
 
-  double _calcAttendanceScore(Map<String, String> history) {
-    if (history.isEmpty) return 90.0;
+  ({double score, bool hasData}) _calcAttendanceScore(Map<String, String> history) {
+    if (history.isEmpty) return (score: 0.0, hasData: false);
     int present = 0;
     int total = 0;
     history.forEach((date, status) {
       final s = status.toLowerCase().trim();
-      if (s == 'present' || s == 'p') {
-        present++;
-        total++;
-      } else if (s == 'late' || s == 'l') {
+      if (s == 'present' || s == 'p' || s == 'late' || s == 'l') {
         present++;
         total++;
       } else if (s == 'absent' || s == 'a') {
         total++;
       }
     });
-    if (total == 0) return 90.0;
-    return ((present / total) * 100.0).clamp(0.0, 100.0);
+    if (total == 0) return (score: 0.0, hasData: false);
+    return (score: ((present / total) * 100.0).clamp(0.0, 100.0), hasData: true);
   }
 
-  double _calcWellnessScore(Map<String, int> wellness) {
-    final b = wellness['behavior']?.toDouble() ?? 85.0;
-    final h = wellness['health']?.toDouble() ?? 85.0;
-    final hy = wellness['hygiene']?.toDouble() ?? 85.0;
-    return ((b + h + hy) / 3.0).clamp(0.0, 100.0);
+  ({double score, bool hasData}) _calcWellnessScore(Map<String, int> wellness) {
+    if (wellness.isEmpty) return (score: 0.0, hasData: false);
+    final b = wellness['behavior']?.toDouble();
+    final h = wellness['health']?.toDouble();
+    final hy = wellness['hygiene']?.toDouble();
+    if (b == null && h == null && hy == null) {
+      return (score: 0.0, hasData: false);
+    }
+    final bVal = b ?? 80.0;
+    final hVal = h ?? 80.0;
+    final hyVal = hy ?? 80.0;
+    return (score: ((bVal + hVal + hyVal) / 3.0).clamp(0.0, 100.0), hasData: true);
   }
 
-  double _calcTestsScore(List<Map<String, dynamic>> reports) {
-    if (reports.isEmpty) return 86.0;
-    double totalObtained = 0;
-    double totalPossible = 0;
+  ({double score, bool hasData}) _calcTestsScore(List<Map<String, dynamic>> reports) {
+    if (reports.isEmpty) return (score: 0.0, hasData: false);
+    double totalObtained = 0.0;
+    double totalPossible = 0.0;
     for (var r in reports) {
       final obt = double.tryParse(r['obtainedMarks']?.toString() ?? '') ??
-          double.tryParse(r['score']?.toString() ?? '') ??
-          0.0;
+          double.tryParse(r['score']?.toString() ?? '');
       final tot = double.tryParse(r['totalMarks']?.toString() ?? '') ?? 100.0;
-      if (tot > 0) {
+      if (obt != null && tot > 0) {
         totalObtained += obt;
         totalPossible += tot;
       }
     }
-    if (totalPossible == 0) return 86.0;
-    return ((totalObtained / totalPossible) * 100.0).clamp(0.0, 100.0);
+    if (totalPossible == 0) return (score: 0.0, hasData: false);
+    return (score: ((totalObtained / totalPossible) * 100.0).clamp(0.0, 100.0), hasData: true);
   }
 
-  ({String label, String grade, Color color, Color bg, IconData icon}) _getStatusBadge(double score) {
+  ({String label, String grade, Color color, Color bg, IconData icon}) _getStatusBadge(double score, bool hasAnyData) {
+    if (!hasAnyData) {
+      return (
+        label: "Pending",
+        grade: "Pending Eval",
+        color: const Color(0xFF6B7280),
+        bg: const Color(0xFFF3F4F6),
+        icon: Icons.hourglass_top_rounded,
+      );
+    }
     if (score >= 85) {
       return (
         label: "Outstanding",
         grade: "A+ Distinction",
-        color: const Color(0xFF059669), // Rich Green
+        color: const Color(0xFF059669),
         bg: const Color(0xFFECFDF5),
         icon: Icons.workspace_premium_rounded,
       );
@@ -94,7 +134,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
       return (
         label: "Excellent",
         grade: "Grade A",
-        color: const Color(0xFF10B981), // Green
+        color: const Color(0xFF10B981),
         bg: const Color(0xFFECFDF5),
         icon: Icons.trending_up_rounded,
       );
@@ -102,7 +142,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
       return (
         label: "Good Standing",
         grade: "Grade B",
-        color: const Color(0xFF16A34A), // Green (45% to 100% is Green)
+        color: const Color(0xFF16A34A),
         bg: const Color(0xFFF0FDF4),
         icon: Icons.thumb_up_rounded,
       );
@@ -110,7 +150,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
       return (
         label: "Developing",
         grade: "Grade C",
-        color: const Color(0xFFF97316), // Orange (35% to 45%)
+        color: const Color(0xFFF97316),
         bg: const Color(0xFFFFF7ED),
         icon: Icons.eco_rounded,
       );
@@ -118,25 +158,180 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
       return (
         label: "Needs Focus",
         grade: "Grade D",
-        color: const Color(0xFFDC2626), // Red (30% and below)
+        color: const Color(0xFFDC2626),
         bg: const Color(0xFFFEF2F2),
         icon: Icons.priority_high_rounded,
       );
     }
   }
 
-  // Monthly trend data points derived from overall score
-  List<FlSpot> _getMonthlyTrendSpots(double currentScore) {
-    // Generate realistic historical progression leading to currentScore
-    final base = (currentScore - 8.0).clamp(50.0, 95.0);
-    return [
-      FlSpot(0, (base + 0.0).clamp(40.0, 100.0)),
-      FlSpot(1, (base + 2.5).clamp(40.0, 100.0)),
-      FlSpot(2, (base + 1.8).clamp(40.0, 100.0)),
-      FlSpot(3, (base + 4.5).clamp(40.0, 100.0)),
-      FlSpot(4, (base + 6.0).clamp(40.0, 100.0)),
-      FlSpot(5, currentScore),
-    ];
+  List<({String name, int year, int month})> _getLast6Months() {
+    final now = DateTime.now();
+    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    List<({String name, int year, int month})> list = [];
+    for (int i = 5; i >= 0; i--) {
+      int year = now.year;
+      int month = now.month - i;
+      while (month <= 0) {
+        month += 12;
+        year -= 1;
+      }
+      list.add((name: names[month - 1], year: year, month: month));
+    }
+    return list;
+  }
+
+  ({
+    List<String> months,
+    List<FlSpot> spots,
+    String growthText,
+    IconData growthIcon,
+    Color growthColor,
+    Color growthBg,
+    Color growthBorder,
+  }) _computeDynamicMonthlyTrend({
+    required double currentScore,
+    required List<Map<String, dynamic>> testReports,
+    required Map<String, String> attendanceHistory,
+  }) {
+    final monthEntries = _getLast6Months();
+    final List<String> monthLabels = monthEntries.map((m) => m.name).toList();
+    final List<double?> monthlyAverages = [];
+
+    for (var m in monthEntries) {
+      // 1. Test scores in this specific month
+      double testObtained = 0.0;
+      double testPossible = 0.0;
+      for (var r in testReports) {
+        final dt = _parseReportDate(r);
+        if (dt != null && dt.year == m.year && dt.month == m.month) {
+          final obt = double.tryParse(r['obtainedMarks']?.toString() ?? '') ??
+              double.tryParse(r['score']?.toString() ?? '');
+          final tot = double.tryParse(r['totalMarks']?.toString() ?? '') ?? 100.0;
+          if (obt != null && tot > 0) {
+            testObtained += obt;
+            testPossible += tot;
+          }
+        }
+      }
+      final bool hasTests = testPossible > 0;
+      final double testAvg = hasTests ? (testObtained / testPossible) * 100.0 : 0.0;
+
+      // 2. Attendance in this specific month
+      final prefix = "${m.year}-${m.month.toString().padLeft(2, '0')}";
+      int present = 0;
+      int totalDays = 0;
+      attendanceHistory.forEach((dateKey, status) {
+        if (dateKey.startsWith(prefix)) {
+          final s = status.toLowerCase().trim();
+          if (s == 'present' || s == 'p' || s == 'late' || s == 'l') {
+            present++;
+            totalDays++;
+          } else if (s == 'absent' || s == 'a') {
+            totalDays++;
+          }
+        }
+      });
+      final bool hasAtt = totalDays > 0;
+      final double attAvg = hasAtt ? (present / totalDays) * 100.0 : 0.0;
+
+      if (hasTests && hasAtt) {
+        monthlyAverages.add(((testAvg + attAvg) / 2.0).clamp(0.0, 100.0));
+      } else if (hasTests) {
+        monthlyAverages.add(testAvg.clamp(0.0, 100.0));
+      } else if (hasAtt) {
+        monthlyAverages.add(attAvg.clamp(0.0, 100.0));
+      } else {
+        monthlyAverages.add(null);
+      }
+    }
+
+    final List<FlSpot> spots = [];
+    double fallback = currentScore > 0 ? currentScore : 0.0;
+
+    double? lastKnown;
+    for (int i = 0; i < 6; i++) {
+      if (monthlyAverages[i] != null) {
+        lastKnown = monthlyAverages[i];
+      }
+    }
+
+    for (int i = 0; i < 6; i++) {
+      final val = monthlyAverages[i];
+      double spotVal;
+      if (val != null) {
+        spotVal = val;
+      } else if (i == 5 && currentScore > 0) {
+        spotVal = currentScore;
+      } else if (lastKnown != null) {
+        spotVal = lastKnown;
+      } else {
+        spotVal = fallback;
+      }
+      spots.add(FlSpot(i.toDouble(), spotVal.clamp(0.0, 100.0)));
+    }
+
+    // Determine growth comparison (compare latest recorded month to previous)
+    double? currentMonthScore = monthlyAverages[5] ?? (currentScore > 0 ? currentScore : null);
+    double? previousMonthScore;
+
+    for (int i = 4; i >= 0; i--) {
+      if (monthlyAverages[i] != null) {
+        previousMonthScore = monthlyAverages[i];
+        break;
+      }
+    }
+
+    String growthText;
+    IconData growthIcon;
+    Color growthColor;
+    Color growthBg;
+    Color growthBorder;
+
+    if (currentMonthScore != null && previousMonthScore != null) {
+      final diff = currentMonthScore - previousMonthScore;
+      if (diff > 0) {
+        growthText = "+${diff.toStringAsFixed(1)}% Growth";
+        growthIcon = Icons.arrow_upward_rounded;
+        growthColor = const Color(0xFF059669);
+        growthBg = const Color(0xFFECFDF5);
+        growthBorder = const Color(0xFF6EE7B7);
+      } else if (diff < 0) {
+        growthText = "${diff.toStringAsFixed(1)}% Pace";
+        growthIcon = Icons.arrow_downward_rounded;
+        growthColor = const Color(0xFFDC2626);
+        growthBg = const Color(0xFFFEF2F2);
+        growthBorder = const Color(0xFFFCA5A5);
+      } else {
+        growthText = "Steady (0.0%)";
+        growthIcon = Icons.trending_flat_rounded;
+        growthColor = const Color(0xFF2563EB);
+        growthBg = const Color(0xFFEFF6FF);
+        growthBorder = const Color(0xFF93C5FD);
+      }
+    } else if (currentScore > 0) {
+      growthText = "Tracking Active";
+      growthIcon = Icons.trending_up_rounded;
+      growthColor = const Color(0xFF059669);
+      growthBg = const Color(0xFFECFDF5);
+      growthBorder = const Color(0xFF6EE7B7);
+    } else {
+      growthText = "No Records Yet";
+      growthIcon = Icons.info_outline_rounded;
+      growthColor = const Color(0xFF6B7280);
+      growthBg = const Color(0xFFF3F4F6);
+      growthBorder = const Color(0xFFE5E7EB);
+    }
+
+    return (
+      months: monthLabels,
+      spots: spots,
+      growthText: growthText,
+      growthIcon: growthIcon,
+      growthColor: growthColor,
+      growthBg: growthBg,
+      growthBorder: growthBorder,
+    );
   }
 
   @override
@@ -154,19 +349,59 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
     final academicData = academicAsync.value;
     final testReports = reportsAsync.value ?? [];
 
-    final academicScore = _calcAcademicScore(academicData);
-    final homeworkScore = _calcHomeworkScore(academicData);
-    final attendanceScore = _calcAttendanceScore(widget.kid.attendanceHistory);
-    final wellnessScore = _calcWellnessScore(widget.kid.wellness);
-    final testsScore = _calcTestsScore(testReports);
+    final academicRes = _calcAcademicScore(academicData);
+    final homeworkRes = _calcHomeworkScore(academicData, widget.kid);
+    final attendanceRes = _calcAttendanceScore(widget.kid.attendanceHistory);
+    final wellnessRes = _calcWellnessScore(widget.kid.wellness);
+    final testsRes = _calcTestsScore(testReports);
 
-    final totalScore = (academicScore * 0.25) +
-        (homeworkScore * 0.20) +
-        (attendanceScore * 0.20) +
-        (wellnessScore * 0.15) +
-        (testsScore * 0.20);
+    final academicScore = academicRes.score;
+    final homeworkScore = homeworkRes.score;
+    final attendanceScore = attendanceRes.score;
+    final wellnessScore = wellnessRes.score;
+    final testsScore = testsRes.score;
 
-    final status = _getStatusBadge(totalScore);
+    final hasAcademic = academicRes.hasData;
+    final hasHomework = homeworkRes.hasData;
+    final hasAttendance = attendanceRes.hasData;
+    final hasWellness = wellnessRes.hasData;
+    final hasTests = testsRes.hasData;
+
+    final bool hasAnyData = hasAcademic || hasHomework || hasAttendance || hasWellness || hasTests;
+
+    // Dynamically calculate cumulative score based on actively available pillars
+    double totalWeight = 0.0;
+    double weightedSum = 0.0;
+
+    if (hasAcademic) {
+      weightedSum += (academicScore * 25.0);
+      totalWeight += 25.0;
+    }
+    if (hasHomework) {
+      weightedSum += (homeworkScore * 20.0);
+      totalWeight += 20.0;
+    }
+    if (hasAttendance) {
+      weightedSum += (attendanceScore * 20.0);
+      totalWeight += 20.0;
+    }
+    if (hasWellness) {
+      weightedSum += (wellnessScore * 15.0);
+      totalWeight += 15.0;
+    }
+    if (hasTests) {
+      weightedSum += (testsScore * 20.0);
+      totalWeight += 20.0;
+    }
+
+    final double totalScore = totalWeight > 0.0 ? (weightedSum / totalWeight).clamp(0.0, 100.0) : 0.0;
+    final status = _getStatusBadge(totalScore, hasAnyData);
+
+    final trendData = _computeDynamicMonthlyTrend(
+      currentScore: totalScore,
+      testReports: testReports,
+      attendanceHistory: widget.kid.attendanceHistory,
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -174,12 +409,19 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Hero Overall Performance Score Card
-          _buildHeroScoreCard(totalScore, status),
+          _buildHeroScoreCard(
+            totalScore: totalScore,
+            status: status,
+            academicData: academicData,
+            testReports: testReports,
+            attendanceScore: attendanceScore,
+            hasAttendance: hasAttendance,
+          ),
 
           const SizedBox(height: 20),
 
           // 2. Monthly Growth / Trend Section
-          _buildMonthlyGrowthSection(totalScore),
+          _buildMonthlyGrowthSection(trendData),
 
           const SizedBox(height: 20),
 
@@ -215,66 +457,80 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
 
           const SizedBox(height: 12),
 
-          // 5-Pillar Detailed Cards
+          // 5-Pillar Detailed Cards (100% Dynamic & Real)
           _buildPillarCard(
             title: "Academic Subjects",
-            subtitle: "Subject mastery & class understanding",
+            subtitle: hasAcademic
+                ? "${academicData!.academicScores.length} subjects evaluated"
+                : "No teacher evaluations recorded yet",
             score: academicScore,
             weight: "25% weight",
             icon: Icons.menu_book_rounded,
             color: const Color(0xFF6366F1),
+            hasData: hasAcademic,
           ),
           const SizedBox(height: 10),
           _buildPillarCard(
             title: "Homework & Assignments",
-            subtitle: "Daily tasks completion & timeliness",
+            subtitle: hasHomework
+                ? "Daily tasks completion & grading"
+                : "No homework scores recorded yet",
             score: homeworkScore,
             weight: "20% weight",
             icon: Icons.assignment_turned_in_rounded,
             color: const Color(0xFF0EA5E9),
+            hasData: hasHomework,
           ),
           const SizedBox(height: 10),
           _buildPillarCard(
             title: "Attendance & Punctuality",
-            subtitle: "Class presence & consistency",
+            subtitle: hasAttendance
+                ? "${widget.kid.attendanceHistory.length} total school days logged"
+                : "No attendance logged yet",
             score: attendanceScore,
             weight: "20% weight",
             icon: Icons.calendar_month_rounded,
             color: const Color(0xFF10B981),
+            hasData: hasAttendance,
           ),
           const SizedBox(height: 10),
           _buildPillarCard(
             title: "Wellness & Behavior",
-            subtitle: "Conduct, health care & hygiene",
+            subtitle: hasWellness
+                ? "Conduct, health care & hygiene"
+                : "No wellness ratings saved yet",
             score: wellnessScore,
             weight: "15% weight",
             icon: Icons.favorite_rounded,
             color: const Color(0xFFEC4899),
+            hasData: hasWellness,
           ),
           const SizedBox(height: 10),
           _buildPillarCard(
             title: "Tests & Assessments",
-            subtitle: "Scheduled quizzes & term tests",
+            subtitle: hasTests
+                ? "${testReports.length} test ${testReports.length == 1 ? 'assessment' : 'assessments'} recorded"
+                : "No test reports submitted yet",
             score: testsScore,
             weight: "20% weight",
             icon: Icons.quiz_rounded,
             color: const Color(0xFFF59E0B),
+            hasData: hasTests,
           ),
-
-          const SizedBox(height: 24),
-
-          // 4. AI Strategic Growth Insights
-          _buildAiGrowthRecommendations(totalScore),
         ],
       ),
     );
   }
 
   // --- Ultra Modern Executive Hero Score Card ---
-  Widget _buildHeroScoreCard(
-    double score,
-    ({String label, String grade, Color color, Color bg, IconData icon}) status,
-  ) {
+  Widget _buildHeroScoreCard({
+    required double totalScore,
+    required ({String label, String grade, Color color, Color bg, IconData icon}) status,
+    required AcademicPerformanceData? academicData,
+    required List<Map<String, dynamic>> testReports,
+    required double attendanceScore,
+    required bool hasAttendance,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -320,7 +576,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // AI Analytics Badge
+                      // Analytics Badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
@@ -331,7 +587,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: const [
-                            Icon(Icons.auto_awesome, size: 13, color: ThemeColors.primaryPurple),
+                            Icon(Icons.insights_rounded, size: 13, color: ThemeColors.primaryPurple),
                             SizedBox(width: 5),
                             Text(
                               "TOTAL PERFORMANCE",
@@ -380,7 +636,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                     children: [
                       // Radial Progress Ring
                       TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0.0, end: score),
+                        tween: Tween<double>(begin: 0.0, end: totalScore),
                         duration: const Duration(milliseconds: 1400),
                         curve: Curves.easeOutCubic,
                         builder: (context, value, child) {
@@ -459,7 +715,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              "Aggregated across 5 learning & development pillars",
+                              "Aggregated across learning & development pillars",
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: Colors.grey[600],
@@ -494,28 +750,28 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                   const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   const SizedBox(height: 14),
 
-                  // Bottom 3 Quick KPI Badges
+                  // Bottom 3 Quick KPI Badges (100% Real from Teacher App)
                   Row(
                     children: [
                       _buildQuickKpi(
-                        label: "Class Standing",
-                        value: score >= 80 ? "Top 10%" : "Average",
-                        icon: Icons.military_tech_rounded,
-                        color: const Color(0xFF6366F1),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildQuickKpi(
-                        label: "Consistency",
-                        value: "High",
-                        icon: Icons.bolt_rounded,
+                        label: "Attendance",
+                        value: hasAttendance ? "${attendanceScore.toInt()}%" : "N/A",
+                        icon: Icons.calendar_month_rounded,
                         color: const Color(0xFF10B981),
                       ),
                       const SizedBox(width: 8),
                       _buildQuickKpi(
-                        label: "Growth Pace",
-                        value: "+4.2%",
-                        icon: Icons.trending_up_rounded,
-                        color: const Color(0xFF0EA5E9),
+                        label: "Tests Taken",
+                        value: "${testReports.length}",
+                        icon: Icons.quiz_rounded,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickKpi(
+                        label: "Subjects",
+                        value: "${academicData?.academicScores.length ?? 0}",
+                        icon: Icons.menu_book_rounded,
+                        color: const Color(0xFF6366F1),
                       ),
                     ],
                   ),
@@ -575,11 +831,18 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
     );
   }
 
-  // --- Monthly Growth & Trend Line Chart ---
-  Widget _buildMonthlyGrowthSection(double currentScore) {
-    final spots = _getMonthlyTrendSpots(currentScore);
-    final months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep"];
-
+  // --- Monthly Growth & Trend Line Chart (Dynamic 6-Month Real Analysis) ---
+  Widget _buildMonthlyGrowthSection(
+    ({
+      List<String> months,
+      List<FlSpot> spots,
+      String growthText,
+      IconData growthIcon,
+      Color growthColor,
+      Color growthBg,
+      Color growthBorder,
+    }) trendData,
+  ) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -597,7 +860,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row with Grow/Down Pill (Guarded with Expanded)
+          // Header Row with Grow/Down Pill
           Row(
             children: [
               Expanded(
@@ -623,25 +886,25 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
 
               const SizedBox(width: 8),
 
-              // Growth Pill
+              // Dynamic Growth Pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
+                  color: trendData.growthBg,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF6EE7B7)),
+                  border: Border.all(color: trendData.growthBorder),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.arrow_upward_rounded, size: 13, color: Color(0xFF059669)),
-                    SizedBox(width: 3),
+                  children: [
+                    Icon(trendData.growthIcon, size: 13, color: trendData.growthColor),
+                    const SizedBox(width: 3),
                     Text(
-                      "+4.2% Growth",
+                      trendData.growthText,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF059669),
+                        color: trendData.growthColor,
                       ),
                     ),
                   ],
@@ -657,12 +920,12 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
             height: 180,
             child: LineChart(
               LineChartData(
-                minY: 40,
+                minY: 0,
                 maxY: 100,
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 20,
+                  horizontalInterval: 25,
                   getDrawingHorizontalLine: (value) => FlLine(
                     color: Colors.grey[200]!,
                     strokeWidth: 1,
@@ -672,7 +935,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 20,
+                      interval: 25,
                       reservedSize: 32,
                       getTitlesWidget: (value, meta) => Text(
                         "${value.toInt()}%",
@@ -686,15 +949,16 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                       interval: 1,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx >= 0 && idx < months.length) {
+                        if (idx >= 0 && idx < trendData.months.length) {
+                          final isLast = idx == trendData.months.length - 1;
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
-                              months[idx],
+                              trendData.months[idx],
                               style: TextStyle(
                                 fontSize: 11,
-                                fontWeight: idx == 5 ? FontWeight.bold : FontWeight.w500,
-                                color: idx == 5 ? ThemeColors.primaryPurple : Colors.grey[600],
+                                fontWeight: isLast ? FontWeight.bold : FontWeight.w500,
+                                color: isLast ? ThemeColors.primaryPurple : Colors.grey[600],
                               ),
                             ),
                           );
@@ -709,7 +973,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: spots,
+                    spots: trendData.spots,
                     isCurved: true,
                     curveSmoothness: 0.35,
                     color: ThemeColors.primaryPurple,
@@ -718,7 +982,7 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
-                        final isLast = index == spots.length - 1;
+                        final isLast = index == trendData.spots.length - 1;
                         return FlDotCirclePainter(
                           radius: isLast ? 6 : 4,
                           color: isLast ? ThemeColors.primaryPurple : Colors.white,
@@ -756,7 +1020,11 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
     required String weight,
     required IconData icon,
     required Color color,
+    required bool hasData,
   }) {
+    final displayScore = hasData ? "${score.toInt()}%" : "Pending";
+    final double progressValue = hasData ? (score / 100.0).clamp(0.0, 1.0) : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -799,7 +1067,11 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                     ),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: hasData ? Colors.grey[600] : Colors.grey[400],
+                        fontStyle: hasData ? FontStyle.normal : FontStyle.italic,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -810,11 +1082,11 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    "${score.toInt()}%",
+                    displayScore,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: hasData ? 16 : 13,
                       fontWeight: FontWeight.bold,
-                      color: color,
+                      color: hasData ? color : Colors.grey[400],
                     ),
                   ),
                   Text(
@@ -832,104 +1104,14 @@ class _PerformanceTabContentState extends ConsumerState<PerformanceTabContent> {
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value: (score / 100.0).clamp(0.0, 1.0),
+              value: progressValue,
               minHeight: 6,
               backgroundColor: Colors.grey[100],
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+              valueColor: AlwaysStoppedAnimation<Color>(hasData ? color : Colors.grey[300]!),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  // --- AI Strategic Growth Insights ---
-  Widget _buildAiGrowthRecommendations(double score) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF7C3AED).withOpacity(0.06),
-            const Color(0xFF6366F1).withOpacity(0.03),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: ThemeColors.primaryPurple.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.auto_awesome, color: ThemeColors.primaryPurple, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "AI Growth Insights & Strategy",
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: ThemeColors.primaryPurple,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          _buildInsightBullet(
-            icon: Icons.check_circle_rounded,
-            iconColor: const Color(0xFF10B981),
-            title: "Top Strength",
-            desc: "Exceptional punctuality & wellness habits. Maintains strong learning discipline.",
-          ),
-          const SizedBox(height: 10),
-          _buildInsightBullet(
-            icon: Icons.flag_rounded,
-            iconColor: const Color(0xFFF59E0B),
-            title: "Target for Next Month",
-            desc: "Focus on daily Math concept reviews and homework submissions to advance score above 92%.",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsightBullet({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String desc,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: iconColor, size: 16),
-        const SizedBox(width: 8),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.4),
-              children: [
-                TextSpan(
-                  text: "$title: ",
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                ),
-                TextSpan(text: desc),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

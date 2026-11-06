@@ -142,14 +142,23 @@ class ChatService {
           .collection('messages')
           .where('parentId', isEqualTo: parentId)
           .where('studentId', isEqualTo: studentId)
-          .where('read', isEqualTo: false)
           .get();
 
       if (querySnapshot.docs.isEmpty) return;
 
+      final unreadDocs = querySnapshot.docs.where((doc) {
+        final data = doc.data();
+        return data['read'] != true;
+      }).toList();
+
+      if (unreadDocs.isEmpty) return;
+
       final batch = FirebaseFirestore.instance.batch();
-      for (final doc in querySnapshot.docs) {
-        batch.update(doc.reference, {'read': true});
+      for (final doc in unreadDocs) {
+        batch.update(doc.reference, {
+          'read': true,
+          'seenAt': FieldValue.serverTimestamp(),
+        });
       }
       await batch.commit();
     } catch (e) {
@@ -206,14 +215,23 @@ class ChatService {
           .doc(schoolId)
           .collection('messages')
           .where('parentId', isEqualTo: parentId)
-          .where('read', isEqualTo: false)
           .get();
 
       if (querySnapshot.docs.isEmpty) return;
 
+      final unreadDocs = querySnapshot.docs.where((doc) {
+        final data = doc.data();
+        return data['read'] != true;
+      }).toList();
+
+      if (unreadDocs.isEmpty) return;
+
       final batch = FirebaseFirestore.instance.batch();
-      for (final doc in querySnapshot.docs) {
-        batch.update(doc.reference, {'read': true});
+      for (final doc in unreadDocs) {
+        batch.update(doc.reference, {
+          'read': true,
+          'seenAt': FieldValue.serverTimestamp(),
+        });
       }
       await batch.commit();
     } catch (e) {

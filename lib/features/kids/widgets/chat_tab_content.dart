@@ -161,11 +161,15 @@ class _ChatTabContentState extends ConsumerState<ChatTabContent> {
     super.initState();
     _loadHiddenMessages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final parentData = ref.read(parentDataProvider).value;
-      if (parentData != null) {
-        ChatService.markAsRead(parentData.schoolId, widget.kid.id, parentData.uid);
-      }
+      _triggerMarkAsRead();
     });
+  }
+
+  void _triggerMarkAsRead() {
+    final parentData = ref.read(parentDataProvider).value;
+    if (parentData != null && parentData.schoolId.isNotEmpty && parentData.uid.isNotEmpty) {
+      ChatService.markAsRead(parentData.schoolId, widget.kid.id, parentData.uid);
+    }
   }
 
   Future<void> _loadHiddenMessages() async {
@@ -239,6 +243,25 @@ class _ChatTabContentState extends ConsumerState<ChatTabContent> {
 
   @override
   Widget build(BuildContext context) {
+    // Automatically trigger markAsRead whenever messages stream in or update
+    ref.listen<AsyncValue<List<MessageModel>>>(kidChatProvider(widget.kid.id), (previous, next) {
+      next.whenData((messages) {
+        final hasUnread = messages.any((m) => !m.read && (m.senderRole != 'parent' && m.type != 'parent-reply'));
+        if (hasUnread) {
+          _triggerMarkAsRead();
+        }
+      });
+    });
+
+    // Also trigger if parentData resolves while staying on the chat tab
+    ref.listen<AsyncValue<ParentData?>>(parentDataProvider, (previous, next) {
+      next.whenData((parentData) {
+        if (parentData != null) {
+          _triggerMarkAsRead();
+        }
+      });
+    });
+
     final chatAsync = ref.watch(kidChatProvider(widget.kid.id));
 
     return Column(
