@@ -30,9 +30,9 @@ class KidDetailsScreen extends ConsumerWidget {
     final currentKid = kidsAsyncValue.value?.firstWhere((k) => k.id == kid.id, orElse: () => kid) ?? kid;
 
     return DefaultTabController(
-      key: const ValueKey('kid_details_tabs_9'),
+      key: ValueKey('kid_details_tabs_9_${kid.id}_$initialTabIndex'),
       length: 9,
-      initialIndex: initialTabIndex,
+      initialIndex: initialTabIndex.clamp(0, 8),
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Column(

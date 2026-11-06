@@ -7,8 +7,7 @@ import '../../kids/screens/kid_details_screen.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/utils/translation_helper.dart';
-import 'performance_update_screen.dart';
-import 'scheduled_tests_screen.dart';
+
 class AlertsScreen extends ConsumerStatefulWidget {
   const AlertsScreen({super.key});
 
@@ -137,74 +136,99 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     actions.clearAllAlerts(alerts.map((a) => a.id).toList());
   }
 
+  int _resolveTabIndex(AlertModel alert) {
+    final type = alert.type.toLowerCase().trim();
+    final title = alert.title.toLowerCase().trim();
+    final message = alert.message.toLowerCase().trim();
+    final fullText = "$type $title $message";
+
+    // 1. Attendance -> Tab 5
+    if (type == 'attendance' || fullText.contains('attendance') || fullText.contains('absent') || fullText.contains('present') || fullText.contains('leave')) {
+      return 5;
+    }
+
+    // 2. Homework -> Tab 2
+    if (type == 'homework' || fullText.contains('homework') || fullText.contains('assignment') || fullText.contains('diary')) {
+      return 2;
+    }
+
+    // 3. Tests & Reports -> Tab 6
+    if (type == 'test' || type == 'quiz' || type == 'scheduled_test' ||
+        fullText.contains('test scheduled') || fullText.contains('test cancelled') || fullText.contains('test result') ||
+        fullText.contains('quiz') || fullText.contains('test report') || fullText.contains('assessment')) {
+      return 6;
+    }
+
+    // 4. Result -> Tab 7
+    if (type == 'result' || type == 'result_card' || type == 'document' ||
+        fullText.contains('result card') || fullText.contains('dmc') || fullText.contains('report card') || fullText.contains('final result') || fullText.contains('term result')) {
+      return 7;
+    }
+
+    // 5. Personality / Wellness -> Tab 4
+    if (['health', 'behavior', 'hygiene', 'personality', 'wellness'].contains(type) ||
+        fullText.contains('wellness') || fullText.contains('personality') || fullText.contains('behavior') || fullText.contains('hygiene') || fullText.contains('habits')) {
+      return 4;
+    }
+
+    // 6. Chat / Messages -> Tab 8
+    if (type == 'message' || type == 'chat' || type == 'direct' || type == 'teacher-reply' ||
+        fullText.contains('message') || fullText.contains('voice message') || fullText.contains('chat') || fullText.contains('broadcast')) {
+      return 8;
+    }
+
+    // 7. Syllabus -> Tab 3
+    if (type == 'syllabus' || fullText.contains('syllabus') || fullText.contains('curriculum') || fullText.contains('chapter')) {
+      return 3;
+    }
+
+    // 8. Academic -> Tab 1
+    if (type == 'academic' || fullText.contains('academic') || fullText.contains('subject') || fullText.contains('course')) {
+      return 1;
+    }
+
+    // 9. Performance -> Tab 0
+    if (type == 'performance' || fullText.contains('performance') || fullText.contains('standing') || fullText.contains('growth') || fullText.contains('celebration')) {
+      return 0;
+    }
+
+    // Default fallback to Performance overview
+    return 0;
+  }
+
   void _navigateToKid(AlertModel alert) {
-    if (alert.studentId == null) return;
     final kidsData = ref.read(kidsProvider).value;
-    if (kidsData == null) return;
+    if (kidsData == null || kidsData.isEmpty) return;
 
-    KidData? targetKid;
-    for (var k in kidsData) {
-      if (k.id == alert.studentId) {
-        targetKid = k;
-        break;
-      }
+    KidData targetKid;
+    if (alert.studentId != null && alert.studentId!.isNotEmpty) {
+      targetKid = kidsData.firstWhere(
+        (k) => k.id == alert.studentId,
+        orElse: () => kidsData.first,
+      );
+    } else {
+      final lowerMsg = "${alert.title} ${alert.message}".toLowerCase();
+      targetKid = kidsData.firstWhere(
+        (k) => lowerMsg.contains(k.name.toLowerCase()),
+        orElse: () => kidsData.first,
+      );
     }
 
-    if (targetKid != null) {
-      final type = alert.type.toLowerCase();
-      final title = alert.title.toLowerCase();
-      final message = alert.message.toLowerCase();
-      
-      if (!alert.read) {
-        ref.read(alertsActionProvider).markAsRead(alert.id);
-      }
-
-      if (title.contains('test scheduled') || title.contains('test cancelled') || title.contains('test results')) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ScheduledTestsScreen(
-              kid: targetKid!,
-            ),
-          ),
-        );
-      } else if (type.contains('academic') || type.contains('performance') ||
-          title.contains('academic') || title.contains('performance') ||
-          message.contains('performance')) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PerformanceUpdateScreen(
-              kid: targetKid!,
-            ),
-          ),
-        );
-      } else {
-        int tabIndex = 0; // Default fallback to Academic
-        
-        if (['attendance'].contains(type)) {
-          tabIndex = 2; // Index 2 is Attendance
-        } else if (['health', 'behavior', 'hygiene', 'personality'].contains(type)) {
-          tabIndex = 1; // Index 1 is Personality
-        } else if (['celebration'].contains(type)) {
-          tabIndex = 0; // Index 0 is Academic
-        } else if (['result', 'document'].contains(type)) {
-          tabIndex = 3; // Index 3 is Result
-        } else {
-          tabIndex = 0; // Default fallback for unknown types
-        }
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => KidDetailsScreen(
-              kid: targetKid!,
-              initialTabIndex: tabIndex,
-            ),
-          ),
-        );
-      }
+    if (!alert.read) {
+      ref.read(alertsActionProvider).markAsRead(alert.id);
     }
+
+    final int tabIndex = _resolveTabIndex(alert);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KidDetailsScreen(
+          kid: targetKid,
+          initialTabIndex: tabIndex,
+        ),
+      ),
+    );
   }
 
   @override
