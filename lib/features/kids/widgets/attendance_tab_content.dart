@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../providers/kids_provider.dart';
 import '../../../core/theme/theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,7 +74,10 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
         // Compute default fallback (weekend, upcoming, or unmarked)
         final todayOnlyDate = DateTime(_currentDate.year, _currentDate.month, _currentDate.day);
         
-        if (date.weekday == 6 || date.weekday == 7) {
+        if (date.weekday == 7) {
+          // Sunday is official weekly Holiday -> Blue
+          _mockAttendanceData[date] = 'holiday';
+        } else if (date.weekday == 6) {
           _mockAttendanceData[date] = 'weekend';
         } else if (date.isAfter(todayOnlyDate)) {
           _mockAttendanceData[date] = 'upcoming';
@@ -158,6 +162,8 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
         return Colors.green.shade500;
       case 'absent':
         return Colors.red.shade500; // User explicitly requested red
+      case 'leave_granted':
+        return Colors.amber.shade600; // Distinct Amber color for Approved Leave
       case 'holiday':
         return Colors.blue.shade400;
       case 'unmarked':
@@ -170,7 +176,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
   }
 
   Color _getTextColorForStatus(String status) {
-    if (status == 'present' || status == 'absent' || status == 'holiday') {
+    if (status == 'present' || status == 'absent' || status == 'holiday' || status == 'leave_granted') {
       return Colors.white;
     }
     return ThemeColors.secondaryText;
@@ -308,6 +314,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                   children: [
                     _buildLegendItem("Present", Colors.green.shade500),
                     _buildLegendItem("Absent", Colors.red.shade500),
+                    _buildLegendItem("Leave", Colors.amber.shade600),
                     _buildLegendItem("Holiday", Colors.blue.shade400),
                   ],
                 ),
@@ -318,138 +325,151 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
           const SizedBox(height: 24),
           
           // Apply Leave Banner & Feedback
-          if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'pending')
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 24),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
-                    child: Icon(Icons.access_time_rounded, color: Colors.orange.shade700),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(TranslationHelper.translate('Leave Pending Review', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        const SizedBox(height: 4),
-                        Text(TranslationHelper.translate('Your recent leave application is being reviewed by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else ...[
-            if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'granted')
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.green.shade100, shape: BoxShape.circle),
-                      child: Icon(Icons.check_circle_outline_rounded, color: Colors.green.shade700),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(TranslationHelper.translate('Leave Granted', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
-                          Text(TranslationHelper.translate('Your leave application has been approved by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'rejected')
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
-                      child: Icon(Icons.cancel_outlined, color: Colors.red.shade700),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(TranslationHelper.translate('Leave Rejected', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
-                          Text(TranslationHelper.translate('Your recent leave application was not approved.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            InkWell(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => ApplyLeaveScreen(kid: widget.kid)
-                ));
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
+          Builder(builder: (context) {
+            final activeLeave = widget.kid.activeLeave;
+            final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+            final bool isPendingActive = activeLeave != null &&
+                activeLeave['status'] == 'pending' &&
+                (activeLeave['endDate'] == null || activeLeave['endDate'].toString().compareTo(todayStr) >= 0);
+
+            if (isPendingActive) {
+              return Container(
                 padding: const EdgeInsets.all(16),
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [ThemeColors.primaryPurple, ThemeColors.deepPurple]),
+                  color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: ThemeColors.primaryPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
+                  border: Border.all(color: Colors.orange.shade200),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                      child: const Icon(Icons.edit_document, color: Colors.white),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
+                      child: Icon(Icons.access_time_rounded, color: Colors.orange.shade700),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(TranslationHelper.translate('Apply for Leave', lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(TranslationHelper.translate('Leave Pending Review', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           const SizedBox(height: 4),
-                          Text(TranslationHelper.translate('Submit a sick leave or emergency application', lang), style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          Text(TranslationHelper.translate('Your recent leave application is being reviewed by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: Colors.white),
                   ],
                 ),
-              ),
-            ),
-          ],
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'granted')
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: Colors.green.shade100, shape: BoxShape.circle),
+                          child: Icon(Icons.check_circle_outline_rounded, color: Colors.green.shade700),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(TranslationHelper.translate('Leave Granted', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text(TranslationHelper.translate('Your leave application has been approved by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'rejected')
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
+                          child: Icon(Icons.cancel_outlined, color: Colors.red.shade700),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(TranslationHelper.translate('Leave Rejected', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text(TranslationHelper.translate('Your recent leave application was not approved.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                InkWell(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ApplyLeaveScreen(kid: widget.kid)
+                    ));
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [ThemeColors.primaryPurple, ThemeColors.deepPurple]),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: ThemeColors.primaryPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                          child: const Icon(Icons.edit_document, color: Colors.white),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(TranslationHelper.translate('Apply for Leave', lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text(TranslationHelper.translate('Submit a sick leave or emergency application', lang), style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
 
           Text(
             TranslationHelper.translate("Monthly Summary", lang),
