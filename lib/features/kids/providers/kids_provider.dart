@@ -34,6 +34,11 @@ class KidData {
   final dynamic transportFee;
   final dynamic tuitionFee;
   final List<Map<String, dynamic>> homeworkScores;
+  final String? gateInTime;
+  final String? gateInDate;
+  final String? gateOutTime;
+  final String? gateOutDate;
+  final Map<String, Map<String, String>> gateLogs;
 
   KidData({
     required this.id,
@@ -67,6 +72,11 @@ class KidData {
     this.transportFee,
     this.tuitionFee,
     this.homeworkScores = const [],
+    this.gateInTime,
+    this.gateInDate,
+    this.gateOutTime,
+    this.gateOutDate,
+    this.gateLogs = const {},
   });
 
   factory KidData.fromMap(Map<String, dynamic> map, String id, {String? overrideClassId, String? overrideClassName}) {
@@ -173,7 +183,28 @@ class KidData {
       transportFee: map['transportFee'] ?? map['monthlyTransportFee'],
       tuitionFee: map['tuitionFee'] ?? map['monthlyFee'] ?? map['fee'],
       homeworkScores: parsedHomeworkScores,
+      gateInTime: map['gateInTime']?.toString(),
+      gateInDate: map['gateInDate']?.toString(),
+      gateOutTime: map['gateOutTime']?.toString(),
+      gateOutDate: map['gateOutDate']?.toString(),
+      gateLogs: _parseGateLogsSafe(map['gateLogs']),
     );
+  }
+
+  static Map<String, Map<String, String>> _parseGateLogsSafe(dynamic data) {
+    final result = <String, Map<String, String>>{};
+    if (data is Map) {
+      data.forEach((dateKey, val) {
+        if (val is Map) {
+          final entry = <String, String>{};
+          val.forEach((k, v) {
+            if (v != null) entry[k.toString()] = v.toString();
+          });
+          result[dateKey.toString()] = entry;
+        }
+      });
+    }
+    return result;
   }
 
   static Map<String, String> _parseAttendanceSafe(dynamic data) {

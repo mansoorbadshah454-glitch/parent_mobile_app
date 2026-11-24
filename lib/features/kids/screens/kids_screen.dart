@@ -25,6 +25,19 @@ class KidsScreen extends ConsumerWidget {
               itemCount: kids.length,
               itemBuilder: (context, index) {
                 final kid = kids[index];
+                final now = DateTime.now();
+                final todayStr =
+                    '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+                final todayGate = kid.gateLogs[todayStr];
+                final String? inTime = (kid.gateInDate == todayStr &&
+                        (kid.gateInTime?.isNotEmpty ?? false))
+                    ? kid.gateInTime
+                    : todayGate?['inTime'];
+                final String? outTime = (kid.gateOutDate == todayStr &&
+                        (kid.gateOutTime?.isNotEmpty ?? false))
+                    ? kid.gateOutTime
+                    : todayGate?['outTime'];
+
                 return Card(
                   color: Colors.white,
                   elevation: 1,
@@ -70,6 +83,101 @@ class KidsScreen extends ConsumerWidget {
                                     fontSize: 14,
                                     color: Colors.grey[600],
                                   ),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    // In School Time Badge (always visible on Kid Card)
+                                    Builder(builder: (_) {
+                                      final hasIn = inTime != null && inTime.isNotEmpty;
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: hasIn
+                                              ? const Color(0xFFECFDF5)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: hasIn
+                                                ? const Color(0xFFA7F3D0)
+                                                : const Color(0xFFE2E8F0),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.login_rounded,
+                                              size: 13,
+                                              color: hasIn
+                                                  ? const Color(0xFF047857)
+                                                  : const Color(0xFF64748B),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              hasIn ? 'In School: $inTime' : 'In School: --:--',
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: hasIn
+                                                    ? const Color(0xFF047857)
+                                                    : const Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    // Out From School Time Badge (always visible on Kid Card)
+                                    Builder(builder: (_) {
+                                      final hasOut = outTime != null && outTime.isNotEmpty;
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: hasOut
+                                              ? const Color(0xFFFFF7ED)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: hasOut
+                                                ? const Color(0xFFFED7AA)
+                                                : const Color(0xFFE2E8F0),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.logout_rounded,
+                                              size: 13,
+                                              color: hasOut
+                                                  ? const Color(0xFFC2410C)
+                                                  : const Color(0xFF64748B),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              hasOut ? 'Out: $outTime' : 'Out: --:--',
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: hasOut
+                                                    ? const Color(0xFFC2410C)
+                                                    : const Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ],
                                 ),
                               ],
                             ),

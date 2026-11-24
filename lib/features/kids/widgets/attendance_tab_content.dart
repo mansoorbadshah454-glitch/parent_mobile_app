@@ -19,6 +19,7 @@ class AttendanceTabContent extends ConsumerStatefulWidget {
 class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
   late DateTime _currentDate;
   late DateTime _displayedMonth;
+  DateTime? _selectedDate;
   Map<DateTime, String> _mockAttendanceData = {};
   
   // Stats
@@ -36,6 +37,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
   void initState() {
     super.initState();
     _currentDate = DateTime.now();
+    _selectedDate = DateTime(_currentDate.year, _currentDate.month, _currentDate.day);
     _displayedMonth = DateTime(_currentDate.year, _currentDate.month, 1);
     _loadRealAttendanceDataForMonth();
   }
@@ -279,23 +281,36 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                     final isToday = date.year == _currentDate.year && 
                                     date.month == _currentDate.month && 
                                     date.day == _currentDate.day;
+                    final isSelected = _selectedDate != null &&
+                                    date.year == _selectedDate!.year &&
+                                    date.month == _selectedDate!.month &&
+                                    date.day == _selectedDate!.day;
 
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: _getColorForStatus(status),
-                        shape: BoxShape.circle,
-                        border: isToday 
-                            ? Border.all(color: ThemeColors.primaryPurple, width: 2.5) 
-                            : null,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$dayNumber',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                            color: _getTextColorForStatus(status),
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedDate = date;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        decoration: BoxDecoration(
+                          color: _getColorForStatus(status),
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: Colors.black87, width: 2.5)
+                              : (isToday
+                                  ? Border.all(color: ThemeColors.primaryPurple, width: 2.5)
+                                  : null),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '$dayNumber',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: (isToday || isSelected) ? FontWeight.bold : FontWeight.w600,
+                              color: _getTextColorForStatus(status),
+                            ),
                           ),
                         ),
                       ),
@@ -318,6 +333,139 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                     _buildLegendItem("Holiday", Colors.blue.shade400),
                   ],
                 ),
+
+                // Selected Day Gate Check-In / Check-Out Details
+                if (_selectedDate != null) ...[
+                  const SizedBox(height: 14),
+                  Builder(builder: (context) {
+                    final sel = _selectedDate!;
+                    final selKey =
+                        '${sel.year}-${sel.month.toString().padLeft(2, '0')}-${sel.day.toString().padLeft(2, '0')}';
+                    final todayKey =
+                        '${_currentDate.year}-${_currentDate.month.toString().padLeft(2, '0')}-${_currentDate.day.toString().padLeft(2, '0')}';
+                    final dayGate = widget.kid.gateLogs[selKey];
+                    final String? inTime = (selKey == todayKey &&
+                            widget.kid.gateInDate == todayKey &&
+                            (widget.kid.gateInTime?.isNotEmpty ?? false))
+                        ? widget.kid.gateInTime
+                        : dayGate?['inTime'];
+                    final String? outTime = (selKey == todayKey &&
+                            widget.kid.gateOutDate == todayKey &&
+                            (widget.kid.gateOutTime?.isNotEmpty ?? false))
+                        ? widget.kid.gateOutTime
+                        : dayGate?['outTime'];
+                    final status = _mockAttendanceData[sel] ??
+                        widget.kid.attendanceHistory[selKey] ??
+                        'unmarked';
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                DateFormat('EEEE, MMM d, yyyy').format(sel),
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: _getColorForStatus(status),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  status == 'leave_granted'
+                                      ? 'LEAVE'
+                                      : status.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: _getTextColorForStatus(status),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if ((inTime != null && inTime.isNotEmpty) ||
+                              (outTime != null && outTime.isNotEmpty))
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                if (inTime != null && inTime.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFECFDF5),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.login_rounded, size: 14, color: Color(0xFF047857)),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          'In School: $inTime',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF047857),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (outTime != null && outTime.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF7ED),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFFFED7AA)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.logout_rounded, size: 14, color: Color(0xFFC2410C)),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          'Out: $outTime',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFFC2410C),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            )
+                          else
+                            Text(
+                              'No Gate QR Check-In / Check-Out recorded for this date.',
+                              style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ],
             ),
           ),
@@ -328,46 +476,58 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
           Builder(builder: (context) {
             final activeLeave = widget.kid.activeLeave;
             final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-            final bool isPendingActive = activeLeave != null &&
-                activeLeave['status'] == 'pending' &&
-                (activeLeave['endDate'] == null || activeLeave['endDate'].toString().compareTo(todayStr) >= 0);
+            final String? leaveStatus = activeLeave?['status']?.toString();
+            final String? endDateStr = activeLeave?['endDate']?.toString();
 
-            if (isPendingActive) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
-                      child: Icon(Icons.access_time_rounded, color: Colors.orange.shade700),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(TranslationHelper.translate('Leave Pending Review', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
-                          Text(TranslationHelper.translate('Your recent leave application is being reviewed by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
+            final bool isPendingActive = activeLeave != null &&
+                leaveStatus == 'pending' &&
+                (endDateStr == null ||
+                    endDateStr.isEmpty ||
+                    endDateStr.compareTo(todayStr) >= 0);
+
+            final bool isGrantedActive = activeLeave != null &&
+                leaveStatus == 'granted' &&
+                endDateStr != null &&
+                endDateStr.isNotEmpty &&
+                endDateStr.compareTo(todayStr) >= 0;
+
+            final bool isRejected = activeLeave != null && leaveStatus == 'rejected';
+            final bool isApplyDisabled = isPendingActive || isGrantedActive;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'granted')
+                if (isPendingActive)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
+                          child: Icon(Icons.access_time_rounded, color: Colors.orange.shade700),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(TranslationHelper.translate('Leave Pending Review', lang), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text(TranslationHelper.translate('Your recent leave application is being reviewed by the teacher.', lang), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (isGrantedActive)
                   Container(
                     padding: const EdgeInsets.all(16),
                     margin: const EdgeInsets.only(bottom: 16),
@@ -397,7 +557,7 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                       ],
                     ),
                   ),
-                if (widget.kid.activeLeave != null && widget.kid.activeLeave!['status'] == 'rejected')
+                if (isRejected)
                   Container(
                     padding: const EdgeInsets.all(16),
                     margin: const EdgeInsets.only(bottom: 16),
@@ -428,41 +588,78 @@ class _AttendanceTabContentState extends ConsumerState<AttendanceTabContent> {
                     ),
                   ),
                 InkWell(
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ApplyLeaveScreen(kid: widget.kid)
-                    ));
-                  },
+                  onTap: isApplyDisabled
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ApplyLeaveScreen(kid: widget.kid),
+                            ),
+                          );
+                        },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [ThemeColors.primaryPurple, ThemeColors.deepPurple]),
+                      color: isApplyDisabled ? Colors.grey.shade200 : null,
+                      gradient: isApplyDisabled
+                          ? null
+                          : const LinearGradient(colors: [ThemeColors.primaryPurple, ThemeColors.deepPurple]),
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: ThemeColors.primaryPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-                      ],
+                      border: isApplyDisabled ? Border.all(color: Colors.grey.shade300) : null,
+                      boxShadow: isApplyDisabled
+                          ? null
+                          : [
+                              BoxShadow(color: ThemeColors.primaryPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                            ],
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                          child: const Icon(Icons.edit_document, color: Colors.white),
+                          decoration: BoxDecoration(
+                            color: isApplyDisabled ? Colors.grey.shade300 : Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.edit_document,
+                            color: isApplyDisabled ? Colors.grey.shade500 : Colors.white,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(TranslationHelper.translate('Apply for Leave', lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text(
+                                TranslationHelper.translate('Apply for Leave', lang),
+                                style: TextStyle(
+                                  color: isApplyDisabled ? Colors.grey.shade600 : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text(TranslationHelper.translate('Submit a sick leave or emergency application', lang), style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                              Text(
+                                isPendingActive
+                                    ? TranslationHelper.translate('Disabled while leave request is pending', lang)
+                                    : (isGrantedActive
+                                        ? TranslationHelper.translate('Disabled while leave is active', lang)
+                                        : TranslationHelper.translate('Submit a sick leave or emergency application', lang)),
+                                style: TextStyle(
+                                  color: isApplyDisabled ? Colors.grey.shade500 : Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: Colors.white),
+                        Icon(
+                          isApplyDisabled ? Icons.lock_outline_rounded : Icons.chevron_right,
+                          color: isApplyDisabled ? Colors.grey.shade500 : Colors.white,
+                        ),
                       ],
                     ),
                   ),
